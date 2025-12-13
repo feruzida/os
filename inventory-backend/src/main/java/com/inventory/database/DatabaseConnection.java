@@ -13,6 +13,7 @@ import java.util.Properties;
 
 /**
  * Database Connection Manager using HikariCP Connection Pool
+ * FIXED: Added better error handling and connection validation
  */
 public class DatabaseConnection {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseConnection.class);
@@ -49,6 +50,12 @@ public class DatabaseConnection {
                 props.getProperty("db.pool.idleTimeout", "600000")));
         config.setMaxLifetime(Long.parseLong(
                 props.getProperty("db.pool.maxLifetime", "1800000")));
+
+        // FIXED: Added leak detection and connection test
+        config.setLeakDetectionThreshold(Long.parseLong(
+                props.getProperty("db.pool.leakDetectionThreshold", "60000")));
+        config.setConnectionTestQuery(
+                props.getProperty("db.pool.connectionTestQuery", "SELECT 1"));
 
         // Performance settings
         config.addDataSourceProperty("cachePrepStmts", "true");

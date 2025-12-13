@@ -25,35 +25,124 @@ dependencies {
     implementation 'org.slf4j:slf4j-api:2.0.9'
     implementation 'org.slf4j:slf4j-simple:2.0.9'
 
+    // FIXED: BCrypt for password hashing (КРИТИЧНО!)
+    implementation 'org.mindrot:jbcrypt:0.4'
+
     // JUnit for testing (optional)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
 }
 
 application {
-    mainClass = 'com.inventory.Main'
+    mainClass = 'com.inventory.server.SocketServer'
 }
 
 test {
     useJUnitPlatform()
 }
 
-// Task для запуска приложения
-task runApp(type: JavaExec) {
+// Task для запуска Socket Server
+tasks.register('runServer', JavaExec) {
     group = 'application'
-    description = 'Run the inventory backend application'
+    description = 'Run the Socket Server'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.inventory.server.SocketServer'
+}
+
+// Task для запуска Main (тестирование)
+tasks.register('runMain', JavaExec) {
+    group = 'application'
+    description = 'Run the Main class for testing'
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.inventory.Main'
 }
 
-// Task для создания executable JAR
+// Task для тестирования UserHandler
+tasks.register('testUserHandler', JavaExec) {
+    group = 'testing'
+    description = 'Test UserHandler with BCrypt'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.inventory.handler.UserHandler'
+}
+
+// Task для тестирования ProductHandler
+tasks.register('testProductHandler', JavaExec) {
+    group = 'testing'
+    description = 'Test ProductHandler'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.inventory.handler.ProductHandler'
+}
+
+// Task для тестирования TransactionHandler
+tasks.register('testTransactionHandler', JavaExec) {
+    group = 'testing'
+    description = 'Test TransactionHandler'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.inventory.handler.TransactionHandler'
+}
+
+// Task для создания executable JAR (Fat JAR)
 jar {
     manifest {
         attributes(
-                'Main-Class': 'com.inventory.Main'
+                'Main-Class': 'com.inventory.server.SocketServer',
+                'Implementation-Title': 'All Store Stock Management',
+                'Implementation-Version': version
         )
     }
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// FIXED: Task для создания distribution с правильной структурой
+tasks.register('createDistribution', Zip) {
+    group = 'distribution'
+    description = 'Create distribution package with all necessary files'
+
+    archiveBaseName = 'store-management-backend'
+    archiveVersion = version as Property<String>
+
+    from(jar.outputs.files) {
+        into 'bin'
+    }
+
+    from('src/main/resources') {
+        into 'config'
+        include 'database.properties'
+        include 'logback.xml'
+    }
+
+    from('database_schema.sql') {
+        into 'sql'
+    }
+
+    from('.') {
+        include 'README.md'
+    }
+}
+
+// Task для очистки всех build файлов
+tasks.register('cleanAll') {
+    group = 'build'
+    description = 'Clean all build artifacts'
+    dependsOn clean
+    doLast {
+        delete 'out'
+        delete 'logs'
+        println 'All build artifacts cleaned'
+    }
+}
+
+// FIXED: Task для проверки зависимостей
+tasks.register('checkDependencies') {
+    group = 'verification'
+    description = 'Check if all required dependencies are available'
+    doLast {
+        println '✓ Checking dependencies...'
+        configurations.runtimeClasspath.each { File file ->
+            println "  - ${file.name}"
+        }
+        println '✓ All dependencies OK'
+    }
 }

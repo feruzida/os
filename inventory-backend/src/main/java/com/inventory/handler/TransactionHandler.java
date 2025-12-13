@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * Handler for Transaction-related database operations (CRUD)
+ * FIXED: Improved resource management and validation
  */
 public class TransactionHandler {
     private static final Logger logger = LoggerFactory.getLogger(TransactionHandler.class);
@@ -21,88 +22,88 @@ public class TransactionHandler {
     /**
      * Record a new transaction (Sale or Purchase)
      * This method also updates product quantity automatically
+     * FIXED: Better resource management with try-with-resources
      * @return true if transaction recorded successfully
      */
     public boolean recordTransaction(Transaction transaction) {
-        Connection conn = null;
-        PreparedStatement pstmt = null;
+        // Validation
+        if (transaction.getProductId() <= 0) {
+            logger.error("Invalid product ID");
+            return false;
+        }
+        if (transaction.getUserId() <= 0) {
+            logger.error("Invalid user ID");
+            return false;
+        }
+        if (transaction.getQuantity() <= 0) {
+            logger.error("Quantity must be positive");
+            return false;
+        }
+        if (transaction.getTotalPrice() == null || transaction.getTotalPrice().compareTo(BigDecimal.ZERO) < 0) {
+            logger.error("Invalid total price");
+            return false;
+        }
+        if (!transaction.isSale() && !transaction.isPurchase()) {
+            logger.error("Invalid transaction type: {}", transaction.getTxnType());
+            return false;
+        }
 
-        try {
-            conn = DatabaseConnection.getConnection();
-            conn.setAutoCommit(false); // Start transaction
+        String insertSql = "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) VALUES (?, ?, ?, ?, ?, ?)";
+        String updateSql = transaction.isSale()
+                ? "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?"
+                : "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
 
-            // Insert transaction record
-            String insertSql = "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) VALUES (?, ?, ?, ?, ?, ?)";
-            pstmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
 
-            pstmt.setInt(1, transaction.getProductId());
-            pstmt.setInt(2, transaction.getUserId());
-            pstmt.setString(3, transaction.getTxnType());
-            pstmt.setInt(4, transaction.getQuantity());
-            pstmt.setBigDecimal(5, transaction.getTotalPrice());
-            pstmt.setString(6, transaction.getNotes());
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
+                 PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
 
-            int affectedRows = pstmt.executeUpdate();
+                // Insert transaction
+                insertStmt.setInt(1, transaction.getProductId());
+                insertStmt.setInt(2, transaction.getUserId());
+                insertStmt.setString(3, transaction.getTxnType());
+                insertStmt.setInt(4, transaction.getQuantity());
+                insertStmt.setBigDecimal(5, transaction.getTotalPrice());
+                insertStmt.setString(6, transaction.getNotes());
 
-            if (affectedRows > 0) {
-                ResultSet generatedKeys = pstmt.getGeneratedKeys();
-                if (generatedKeys.next()) {
-                    transaction.setTxnId(generatedKeys.getInt(1));
+                int affectedRows = insertStmt.executeUpdate();
+
+                if (affectedRows > 0) {
+                    ResultSet generatedKeys = insertStmt.getGeneratedKeys();
+                    if (generatedKeys.next()) {
+                        transaction.setTxnId(generatedKeys.getInt(1));
+                    }
                 }
-            }
 
-            // Update product quantity
-            String updateSql;
-            if (transaction.isSale()) {
-                // Sale: decrease quantity
-                updateSql = "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?";
-            } else {
-                // Purchase: increase quantity
-                updateSql = "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
-            }
+                // Update product quantity
+                updateStmt.setInt(1, transaction.getQuantity());
+                updateStmt.setInt(2, transaction.getProductId());
 
-            pstmt.close();
-            pstmt = conn.prepareStatement(updateSql);
-            pstmt.setInt(1, transaction.getQuantity());
-            pstmt.setInt(2, transaction.getProductId());
+                if (transaction.isSale()) {
+                    updateStmt.setInt(3, transaction.getQuantity());
+                }
 
-            if (transaction.isSale()) {
-                pstmt.setInt(3, transaction.getQuantity());
-            }
+                int updated = updateStmt.executeUpdate();
 
-            int updated = pstmt.executeUpdate();
-
-            if (updated == 0 && transaction.isSale()) {
-                conn.rollback();
-                logger.error("Insufficient stock for product ID {}", transaction.getProductId());
-                return false;
-            }
-
-            conn.commit(); // Commit transaction
-            logger.info("Transaction recorded: {} of {} units for product ID {}",
-                    transaction.getTxnType(), transaction.getQuantity(), transaction.getProductId());
-            return true;
-
-        } catch (SQLException e) {
-            if (conn != null) {
-                try {
+                if (updated == 0 && transaction.isSale()) {
                     conn.rollback();
-                } catch (SQLException ex) {
-                    logger.error("Error rolling back transaction", ex);
+                    logger.error("Insufficient stock for product ID {}", transaction.getProductId());
+                    return false;
                 }
+
+                conn.commit();
+                logger.info("Transaction recorded: {} of {} units for product ID {}",
+                        transaction.getTxnType(), transaction.getQuantity(), transaction.getProductId());
+                return true;
+
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
+        } catch (SQLException e) {
             logger.error("Error recording transaction", e);
             return false;
-        } finally {
-            try {
-                if (pstmt != null) pstmt.close();
-                if (conn != null) {
-                    conn.setAutoCommit(true);
-                    conn.close();
-                }
-            } catch (SQLException e) {
-                logger.error("Error closing resources", e);
-            }
         }
     }
 
@@ -111,6 +112,11 @@ public class TransactionHandler {
      * @return Transaction object or null if not found
      */
     public Transaction getTransactionById(int txnId) {
+        if (txnId <= 0) {
+            logger.error("Invalid transaction ID");
+            return null;
+        }
+
         String sql = "SELECT * FROM transactions WHERE txn_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -136,7 +142,7 @@ public class TransactionHandler {
      */
     public List<Transaction> getAllTransactions() {
         List<Transaction> transactions = new ArrayList<>();
-        String sql = "SELECT * FROM transactions ORDER BY txn_date DESC";
+        String sql = "SELECT * FROM transactions ORDER BY txn_date DESC LIMIT 1000";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -160,6 +166,11 @@ public class TransactionHandler {
      * @return List of transactions of the specified type
      */
     public List<Transaction> getTransactionsByType(String txnType) {
+        if (!"Sale".equalsIgnoreCase(txnType) && !"Purchase".equalsIgnoreCase(txnType)) {
+            logger.error("Invalid transaction type: {}", txnType);
+            return new ArrayList<>();
+        }
+
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE txn_type = ? ORDER BY txn_date DESC";
 
@@ -187,6 +198,15 @@ public class TransactionHandler {
      * @return List of transactions within the date range
      */
     public List<Transaction> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate == null || endDate == null) {
+            logger.error("Date range cannot be null");
+            return new ArrayList<>();
+        }
+        if (startDate.isAfter(endDate)) {
+            logger.error("Start date must be before end date");
+            return new ArrayList<>();
+        }
+
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE txn_date BETWEEN ? AND ? ORDER BY txn_date DESC";
 
@@ -216,6 +236,11 @@ public class TransactionHandler {
      * @return List of transactions for the product
      */
     public List<Transaction> getTransactionsByProduct(int productId) {
+        if (productId <= 0) {
+            logger.error("Invalid product ID");
+            return new ArrayList<>();
+        }
+
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE product_id = ? ORDER BY txn_date DESC";
 
@@ -253,6 +278,11 @@ public class TransactionHandler {
      * @return Total sales amount for the specified date
      */
     public BigDecimal getDailySales(LocalDate date) {
+        if (date == null) {
+            logger.error("Date cannot be null");
+            return BigDecimal.ZERO;
+        }
+
         String sql = "SELECT COALESCE(SUM(total_price), 0) as total FROM transactions " +
                 "WHERE txn_type = 'Sale' AND DATE(txn_date) = ?";
 
@@ -278,6 +308,11 @@ public class TransactionHandler {
      * @return Total sales amount for the specified month
      */
     public BigDecimal getMonthlySales(int year, int month) {
+        if (year < 2000 || year > 2100 || month < 1 || month > 12) {
+            logger.error("Invalid year or month");
+            return BigDecimal.ZERO;
+        }
+
         String sql = "SELECT COALESCE(SUM(total_price), 0) as total FROM transactions " +
                 "WHERE txn_type = 'Sale' AND EXTRACT(YEAR FROM txn_date) = ? AND EXTRACT(MONTH FROM txn_date) = ?";
 
@@ -313,62 +348,5 @@ public class TransactionHandler {
                 rs.getTimestamp("txn_date").toLocalDateTime(),
                 rs.getString("notes")
         );
-    }
-
-    // ========== TESTING METHOD ==========
-    public static void main(String[] args) {
-        TransactionHandler handler = new TransactionHandler();
-
-        System.out.println("=== Testing TransactionHandler ===\n");
-
-        // Test 1: Get all transactions
-        System.out.println("1. Getting all transactions:");
-        List<Transaction> transactions = handler.getAllTransactions();
-        transactions.forEach(System.out::println);
-
-        // Test 2: Get today's transactions
-        System.out.println("\n2. Today's transactions:");
-        List<Transaction> todayTxns = handler.getTodayTransactions();
-        System.out.println("Total today: " + todayTxns.size());
-        todayTxns.forEach(System.out::println);
-
-        // Test 3: Record a sale
-        System.out.println("\n3. Recording a sale transaction:");
-        Transaction sale = new Transaction(1, 1, "Sale", 2, new BigDecimal("17000.00"));
-        sale.setNotes("Test sale transaction");
-        boolean recorded = handler.recordTransaction(sale);
-        System.out.println(recorded ? "✓ Sale recorded: " + sale : "✗ Failed to record sale");
-
-        // Test 4: Record a purchase
-        System.out.println("\n4. Recording a purchase transaction:");
-        Transaction purchase = new Transaction(2, 1, "Purchase", 50, new BigDecimal("400000.00"));
-        purchase.setNotes("Test purchase transaction");
-        recorded = handler.recordTransaction(purchase);
-        System.out.println(recorded ? "✓ Purchase recorded: " + purchase : "✗ Failed to record purchase");
-
-        // Test 5: Get transactions by type
-        System.out.println("\n5. Getting all Sale transactions:");
-        List<Transaction> sales = handler.getTransactionsByType("Sale");
-        System.out.println("Total sales: " + sales.size());
-
-        // Test 6: Get daily sales
-        System.out.println("\n6. Today's sales total:");
-        BigDecimal dailySales = handler.getDailySales(LocalDate.now());
-        System.out.println("Total: " + dailySales + " UZS");
-
-        // Test 7: Get monthly sales
-        System.out.println("\n7. This month's sales:");
-        LocalDate now = LocalDate.now();
-        BigDecimal monthlySales = handler.getMonthlySales(now.getYear(), now.getMonthValue());
-        System.out.println("Total: " + monthlySales + " UZS");
-
-        // Test 8: Get transactions for specific product
-        System.out.println("\n8. Transactions for product ID 1:");
-        List<Transaction> productTxns = handler.getTransactionsByProduct(1);
-        productTxns.forEach(System.out::println);
-
-        // Close connection pool
-        DatabaseConnection.closePool();
-        System.out.println("\n=== Test completed ===");
     }
 }

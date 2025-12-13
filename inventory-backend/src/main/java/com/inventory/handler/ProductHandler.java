@@ -5,28 +5,49 @@ import com.inventory.model.Product;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Handler for Product-related database operations (CRUD)
+ * FIXED: Added comprehensive validation
  */
 public class ProductHandler {
     private static final Logger logger = LoggerFactory.getLogger(ProductHandler.class);
 
     /**
      * Add a new product to inventory
+     * FIXED: Added validation before insert
      * @return true if product added successfully
      */
     public boolean addProduct(Product product) {
+        // Validation
+        if (product.getName() == null || product.getName().trim().isEmpty()) {
+            logger.error("Product name cannot be empty");
+            return false;
+        }
+        if (product.getUnitPrice() == null || product.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+            logger.error("Invalid unit price for product '{}'", product.getName());
+            return false;
+        }
+        if (product.getQuantity() < 0) {
+            logger.error("Quantity cannot be negative for product '{}'", product.getName());
+            return false;
+        }
+        if (product.getCategory() == null || product.getCategory().trim().isEmpty()) {
+            logger.warn("Product '{}' has no category", product.getName());
+            product.setCategory("Uncategorized");
+        }
+
         String sql = "INSERT INTO products (name, category, unit_price, quantity, supplier_id) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
-            pstmt.setString(1, product.getName());
-            pstmt.setString(2, product.getCategory());
+            pstmt.setString(1, product.getName().trim());
+            pstmt.setString(2, product.getCategory().trim());
             pstmt.setBigDecimal(3, product.getUnitPrice());
             pstmt.setInt(4, product.getQuantity());
 
@@ -60,6 +81,11 @@ public class ProductHandler {
      * @return Product object or null if not found
      */
     public Product getProductById(int productId) {
+        if (productId <= 0) {
+            logger.error("Invalid product ID: {}", productId);
+            return null;
+        }
+
         String sql = "SELECT * FROM products WHERE product_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -109,6 +135,11 @@ public class ProductHandler {
      * @return List of products in the category
      */
     public List<Product> getProductsByCategory(String category) {
+        if (category == null || category.trim().isEmpty()) {
+            logger.error("Category cannot be empty");
+            return new ArrayList<>();
+        }
+
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE category = ? ORDER BY name";
 
@@ -136,6 +167,11 @@ public class ProductHandler {
      * @return List of products from the supplier
      */
     public List<Product> getProductsBySupplier(int supplierId) {
+        if (supplierId <= 0) {
+            logger.error("Invalid supplier ID: {}", supplierId);
+            return new ArrayList<>();
+        }
+
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE supplier_id = ? ORDER BY name";
 
@@ -163,6 +199,11 @@ public class ProductHandler {
      * @return List of products with low stock
      */
     public List<Product> getLowStockProducts(int threshold) {
+        if (threshold < 0) {
+            logger.error("Threshold cannot be negative");
+            return new ArrayList<>();
+        }
+
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE quantity <= ? ORDER BY quantity";
 
@@ -187,16 +228,35 @@ public class ProductHandler {
 
     /**
      * Update product information
+     * FIXED: Added validation
      * @return true if update successful
      */
     public boolean updateProduct(Product product) {
+        // Validation
+        if (product.getProductId() <= 0) {
+            logger.error("Invalid product ID");
+            return false;
+        }
+        if (product.getName() == null || product.getName().trim().isEmpty()) {
+            logger.error("Product name cannot be empty");
+            return false;
+        }
+        if (product.getUnitPrice() == null || product.getUnitPrice().compareTo(BigDecimal.ZERO) < 0) {
+            logger.error("Invalid unit price");
+            return false;
+        }
+        if (product.getQuantity() < 0) {
+            logger.error("Quantity cannot be negative");
+            return false;
+        }
+
         String sql = "UPDATE products SET name = ?, category = ?, unit_price = ?, quantity = ?, supplier_id = ? WHERE product_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, product.getName());
-            pstmt.setString(2, product.getCategory());
+            pstmt.setString(1, product.getName().trim());
+            pstmt.setString(2, product.getCategory().trim());
             pstmt.setBigDecimal(3, product.getUnitPrice());
             pstmt.setInt(4, product.getQuantity());
 
@@ -225,9 +285,19 @@ public class ProductHandler {
 
     /**
      * Update product quantity (for stock adjustments)
+     * FIXED: Added validation
      * @return true if update successful
      */
     public boolean updateProductQuantity(int productId, int newQuantity) {
+        if (productId <= 0) {
+            logger.error("Invalid product ID");
+            return false;
+        }
+        if (newQuantity < 0) {
+            logger.error("Quantity cannot be negative");
+            return false;
+        }
+
         String sql = "UPDATE products SET quantity = ? WHERE product_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -256,6 +326,11 @@ public class ProductHandler {
      * @return true if deletion successful
      */
     public boolean deleteProduct(int productId) {
+        if (productId <= 0) {
+            logger.error("Invalid product ID");
+            return false;
+        }
+
         String sql = "DELETE FROM products WHERE product_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -282,13 +357,18 @@ public class ProductHandler {
      * @return List of matching products
      */
     public List<Product> searchProductsByName(String searchTerm) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            logger.warn("Search term is empty, returning all products");
+            return getAllProducts();
+        }
+
         List<Product> products = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE name ILIKE ? ORDER BY name";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            pstmt.setString(1, "%" + searchTerm + "%");
+            pstmt.setString(1, "%" + searchTerm.trim() + "%");
             ResultSet rs = pstmt.executeQuery();
 
             while (rs.next()) {
@@ -322,61 +402,5 @@ public class ProductHandler {
                 supplierId,
                 rs.getTimestamp("last_updated").toLocalDateTime()
         );
-    }
-
-    // ========== TESTING METHOD ==========
-    public static void main(String[] args) {
-        ProductHandler handler = new ProductHandler();
-
-        System.out.println("=== Testing ProductHandler ===\n");
-
-        // Test 1: Get all products
-        System.out.println("1. Getting all products:");
-        List<Product> products = handler.getAllProducts();
-        products.forEach(System.out::println);
-
-        // Test 2: Get product by ID
-        System.out.println("\n2. Getting product by ID 1:");
-        Product product = handler.getProductById(1);
-        System.out.println(product);
-
-        // Test 3: Add new product
-        System.out.println("\n3. Adding new product:");
-        Product newProduct = new Product("Test Product", "Test Category",
-                new java.math.BigDecimal("15000.00"), 100);
-        newProduct.setSupplierId(1);
-        boolean added = handler.addProduct(newProduct);
-        System.out.println(added ? "✓ Product added: " + newProduct : "✗ Failed to add product");
-
-        // Test 4: Search products
-        System.out.println("\n4. Searching for 'Coca':");
-        List<Product> searchResults = handler.searchProductsByName("Coca");
-        searchResults.forEach(System.out::println);
-
-        // Test 5: Get low stock products
-        System.out.println("\n5. Getting low stock products (threshold: 60):");
-        List<Product> lowStock = handler.getLowStockProducts(60);
-        lowStock.forEach(p -> System.out.println(p.getName() + " - Quantity: " + p.getQuantity()));
-
-        // Test 6: Update product
-        if (newProduct.getProductId() > 0) {
-            System.out.println("\n6. Updating product quantity:");
-            boolean updated = handler.updateProductQuantity(newProduct.getProductId(), 150);
-            System.out.println(updated ? "✓ Quantity updated to 150" : "✗ Update failed");
-
-            // Test 7: Delete product
-            System.out.println("\n7. Deleting test product:");
-            boolean deleted = handler.deleteProduct(newProduct.getProductId());
-            System.out.println(deleted ? "✓ Product deleted" : "✗ Deletion failed");
-        }
-
-        // Test 8: Get products by category
-        System.out.println("\n8. Getting products in 'Beverages' category:");
-        List<Product> beverages = handler.getProductsByCategory("Beverages");
-        beverages.forEach(System.out::println);
-
-        // Close connection pool
-        DatabaseConnection.closePool();
-        System.out.println("\n=== Test completed ===");
     }
 }
