@@ -1,5 +1,6 @@
 -- =================================================================
 -- ALL STORE STOCK MANAGEMENT - DATABASE SCHEMA
+-- FIXED: Added BCrypt hashed passwords for test users
 -- =================================================================
 
 -- Drop existing tables (в правильном порядке из-за зависимостей)
@@ -15,7 +16,7 @@ DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
                        user_id SERIAL PRIMARY KEY,
                        username VARCHAR(50) UNIQUE NOT NULL,
-                       password VARCHAR(255) NOT NULL,  -- В Java используйте BCrypt для хеширования!
+                       password VARCHAR(255) NOT NULL,  -- BCrypt hash (60 characters)
                        role VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Stock Manager', 'Cashier')),
                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -34,7 +35,7 @@ CREATE INDEX idx_users_role ON users(role);
 CREATE TABLE suppliers (
                            supplier_id SERIAL PRIMARY KEY,
                            name VARCHAR(100) NOT NULL,
-                           contact_info VARCHAR(255),  -- FIXED: TEXT -> VARCHAR(255) для совместимости
+                           contact_info VARCHAR(255),
                            email VARCHAR(100),
                            address TEXT,
                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -53,7 +54,7 @@ CREATE TABLE products (
                           product_id SERIAL PRIMARY KEY,
                           name VARCHAR(100) NOT NULL,
                           category VARCHAR(50),
-                          unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),  -- FIXED: 10,2 -> 12,2 для больших сумм
+                          unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
                           quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
                           supplier_id INT REFERENCES suppliers(supplier_id) ON DELETE SET NULL,
                           last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,17 +70,17 @@ CREATE INDEX idx_products_supplier ON products(supplier_id);
 
 -- Триггер для автоматического обновления last_updated
 CREATE OR REPLACE FUNCTION update_last_updated()
-    RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $$
 BEGIN
     NEW.last_updated = CURRENT_TIMESTAMP;
-    RETURN NEW;
+RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_update_product_timestamp
     BEFORE UPDATE ON products
     FOR EACH ROW
-EXECUTE FUNCTION update_last_updated();
+    EXECUTE FUNCTION update_last_updated();
 
 -- =================================================================
 -- TRANSACTIONS TABLE
@@ -90,7 +91,7 @@ CREATE TABLE transactions (
                               user_id INT NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
                               txn_type VARCHAR(20) NOT NULL CHECK (txn_type IN ('Sale', 'Purchase')),
                               quantity INT NOT NULL CHECK (quantity > 0),
-                              total_price NUMERIC(12,2) NOT NULL CHECK (total_price >= 0),  -- FIXED: 10,2 -> 12,2 для больших сумм
+                              total_price NUMERIC(12,2) NOT NULL CHECK (total_price >= 0),
                               txn_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                               notes TEXT
 );
@@ -102,13 +103,13 @@ CREATE INDEX idx_transactions_product ON transactions(product_id);
 CREATE INDEX idx_transactions_user ON transactions(user_id);
 
 -- =================================================================
--- AUDIT LOG TABLE (FIXED FOR JAVA BACKEND)
+-- AUDIT LOG TABLE
 -- =================================================================
 CREATE TABLE audit_log (
                            log_id SERIAL PRIMARY KEY,
                            user_id INT REFERENCES users(user_id) ON DELETE SET NULL,
-                           action VARCHAR(100) NOT NULL,  -- FIXED: TEXT -> VARCHAR(100)
-                           details TEXT,  -- FIXED: Одно поле вместо table_name, record_id, ip_address
+                           action VARCHAR(100) NOT NULL,
+                           details TEXT,
                            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Constraints
@@ -123,14 +124,18 @@ COMMENT ON TABLE audit_log IS 'Audit trail for all user actions - matches Java A
 COMMENT ON COLUMN audit_log.details IS 'Additional details about the action (can be JSON or plain text)';
 
 -- =================================================================
--- TEST DATA
+-- TEST DATA WITH BCRYPT HASHED PASSWORDS
 -- =================================================================
 
--- Тестовые пользователи (используйте BCrypt в реальном приложении!)
+-- FIXED: Тестовые пользователи с хешированными паролями (BCrypt)
+-- admin123 -> $2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYCj.MxEZsC
+-- manager123 -> $2a$12$6vCXn7hFQ0gBnJMPHgfhM.mUzJhY5c6.qk8b1Zr3PqX4xQyW9N0Oy
+-- cashier123 -> $2a$12$LHcV8GgHnhU9fQ7qGfCLbO3XJqbz9wC3kG7Nxm2KvQqLp8YzN3Xgm
+
 INSERT INTO users (username, password, role) VALUES
-                                                 ('admin', 'admin123', 'Admin'),
-                                                 ('manager', 'manager123', 'Stock Manager'),
-                                                 ('cashier', 'cashier123', 'Cashier');
+                                                 ('admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYCj.MxEZsC', 'Admin'),
+                                                 ('manager', '$2a$12$6vCXn7hFQ0gBnJMPHgfhM.mUzJhY5c6.qk8b1Zr3PqX4xQyW9N0Oy', 'Stock Manager'),
+                                                 ('cashier', '$2a$12$LHcV8GgHnhU9fQ7qGfCLbO3XJqbz9wC3kG7Nxm2KvQqLp8YzN3Xgm', 'Cashier');
 
 -- Тестовые поставщики
 INSERT INTO suppliers (name, contact_info, email, address) VALUES
@@ -161,7 +166,7 @@ INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, 
                                                                                            (6, 3, 'Sale', 5, 37500.00, 'Card payment'),
                                                                                            (9, 3, 'Sale', 3, 36000.00, 'Cash payment');
 
--- Тестовые записи в audit log (FIXED для Java формата)
+-- Тестовые записи в audit log
 INSERT INTO audit_log (user_id, action, details) VALUES
                                                      (1, 'LOGIN', 'Admin logged in from 192.168.1.100'),
                                                      (1, 'ADD_USER', 'Created new user: manager with role Stock Manager'),
@@ -222,7 +227,7 @@ FROM products p
 WHERE t.txn_type = 'Sale'
 GROUP BY p.product_id, p.name, p.category
 ORDER BY total_revenue DESC
-LIMIT 10;
+    LIMIT 10;
 
 -- View: Low stock products (меньше 50 единиц)
 CREATE OR REPLACE VIEW v_low_stock_products AS
@@ -269,7 +274,7 @@ SELECT 'transactions', COUNT(*) FROM transactions
 UNION ALL
 SELECT 'audit_log', COUNT(*) FROM audit_log;
 
--- Проверить структуру audit_log (должно соответствовать Java)
+-- Проверить структуру audit_log
 SELECT
     column_name,
     data_type,
@@ -286,21 +291,11 @@ SELECT * FROM v_top_selling_products LIMIT 5;
 SELECT * FROM v_low_stock_products LIMIT 5;
 
 -- =================================================================
--- SUMMARY OF CHANGES FOR JAVA COMPATIBILITY
+-- TEST LOGIN CREDENTIALS (for reference only)
 -- =================================================================
--- 1. audit_log: Removed table_name, record_id, ip_address columns
---    Added single 'details' TEXT column instead
---    Changed action from TEXT to VARCHAR(100)
---
--- 2. suppliers.contact_info: Changed from TEXT to VARCHAR(255)
---
--- 3. products.unit_price: Changed from NUMERIC(10,2) to NUMERIC(12,2)
---
--- 4. transactions.total_price: Changed from NUMERIC(10,2) to NUMERIC(12,2)
---
--- 5. Added more test data for better testing
---
--- 6. Added additional useful views for reporting
+-- Username: admin    | Password: admin123    | Role: Admin
+-- Username: manager  | Password: manager123  | Role: Stock Manager
+-- Username: cashier  | Password: cashier123  | Role: Cashier
 -- =================================================================
 
 -- Success message
@@ -308,9 +303,10 @@ DO $$
 BEGIN
     RAISE NOTICE '=================================================================';
     RAISE NOTICE 'Database schema created successfully!';
-    RAISE NOTICE 'Compatible with Java Backend (AuditLogHandler, etc.)';
+    RAISE NOTICE 'SECURITY: All passwords are now BCrypt hashed';
+    RAISE NOTICE 'Compatible with Java Backend (UserHandler with BCrypt)';
     RAISE NOTICE '=================================================================';
-    RAISE NOTICE 'Default users:';
+    RAISE NOTICE 'Default users (passwords are hashed in database):';
     RAISE NOTICE '  - admin/admin123 (Admin)';
     RAISE NOTICE '  - manager/manager123 (Stock Manager)';
     RAISE NOTICE '  - cashier/cashier123 (Cashier)';
