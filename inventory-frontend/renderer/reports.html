@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Inventory System</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="container dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1>📈 Reports & Analytics</h1>
+            <p class="welcome-text">View insights and generate reports</p>
+        </div>
+        <div class="header-right">
+            <span class="connection-status" id="connection-status">🟢 Connected</span>
+            <button class="btn btn-secondary" onclick="window.location.href='dashboard.html'">
+                ← Dashboard
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="dashboard-nav">
+        <button class="nav-item" onclick="window.location.href='dashboard.html'">
+            📊 Overview
+        </button>
+        <button class="nav-item" onclick="window.location.href='products.html'">
+            📦 Products
+        </button>
+        <button class="nav-item" onclick="window.location.href='suppliers.html'">
+            🏪 Suppliers
+        </button>
+        <button class="nav-item" onclick="window.location.href='transactions.html'">
+            💰 Transactions
+        </button>
+        <button class="nav-item active">
+            📈 Reports
+        </button>
+    </nav>
+
+    <!-- Report Type Selection -->
+    <div class="section">
+        <div class="section-header">
+            <h2>📋 Select Report Type</h2>
+        </div>
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <button class="report-card active" data-report="sales">
+                <div class="stat-icon">💵</div>
+                <h3>Sales Report</h3>
+                <p>View sales analytics</p>
+            </button>
+            <button class="report-card" data-report="inventory">
+                <div class="stat-icon">📦</div>
+                <h3>Inventory Report</h3>
+                <p>Stock levels & alerts</p>
+            </button>
+            <button class="report-card" data-report="suppliers">
+                <div class="stat-icon">🏪</div>
+                <h3>Supplier Report</h3>
+                <p>Supplier performance</p>
+            </button>
+        </div>
+    </div>
+
+    <!-- Sales Report -->
+    <div id="sales-report" class="section report-section">
+        <div class="section-header">
+            <h2>💵 Sales Report</h2>
+            <div class="section-actions">
+                <select id="sales-period">
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month" selected>This Month</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="refreshSalesReport()">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid mb-20">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="total-transactions">0</h3>
+                    <p>Total Transactions</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="total-revenue">0 UZS</h3>
+                    <p>Total Revenue</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="average-sale">0 UZS</h3>
+                    <p>Average Sale</p>
+                </div>
+            </div>
+        </div>
+
+        <h3>Top Selling Products</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Product</th>
+                    <th>Units Sold</th>
+                    <th>Revenue</th>
+                    <th>Percentage</th>
+                </tr>
+                </thead>
+                <tbody id="top-products-body">
+                <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Inventory Report -->
+    <div id="inventory-report" class="section report-section" style="display: none;">
+        <div class="section-header">
+            <h2>📦 Inventory Report</h2>
+            <button class="btn btn-primary btn-sm" onclick="refreshInventoryReport()">
+                🔄 Refresh
+            </button>
+        </div>
+
+        <div class="stats-grid mb-20">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="total-products-count">0</h3>
+                    <p>Total Products</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="total-stock-value">0 UZS</h3>
+                    <p>Total Stock Value</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="low-stock-count">0</h3>
+                    <p>Low Stock Items</p>
+                </div>
+            </div>
+        </div>
+
+        <h3>⚠️ Low Stock Alert</h3>
+        <div class="table-container mb-20">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Current Stock</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody id="low-stock-body">
+                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Stock by Category</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Products</th>
+                    <th>Total Units</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody id="category-stock-body">
+                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Supplier Report -->
+    <div id="supplier-report" class="section report-section" style="display: none;">
+        <div class="section-header">
+            <h2>🏪 Supplier Report</h2>
+            <button class="btn btn-primary btn-sm" onclick="refreshSupplierReport()">
+                🔄 Refresh
+            </button>
+        </div>
+
+        <div class="stats-grid mb-20">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="total-suppliers-count">0</h3>
+                    <p>Total Suppliers</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <h3 id="active-suppliers">0</h3>
+                    <p>Active Suppliers</p>
+                </div>
+            </div>
+        </div>
+
+        <h3>Supplier Performance</h3>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Products Supplied</th>
+                    <th>Total Units</th>
+                    <th>Contact</th>
+                </tr>
+                </thead>
+                <tbody id="supplier-performance-body">
+                <tr><td colspan="4" class="text-center">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .report-card {
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        border: 2px solid #e5e7eb;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-align: center;
+    }
+
+    .report-card:hover {
+        border-color: #667eea;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .report-card.active {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .report-card h3 {
+        margin: 10px 0 5px 0;
+        font-size: 18px;
+    }
+
+    .report-card p {
+        margin: 0;
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .report-section {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+<script src="js/socket-client.js"></script>
+<script src="js/reports.js"></script>
+</body>
+</html>

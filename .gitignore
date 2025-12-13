@@ -1,0 +1,68 @@
+# ========================
+# OS / IDE
+# ========================
+.DS_Store
+Thumbs.db
+
+.idea/
+*.iml
+.vscode/
+
+# ========================
+# Java / Gradle (BACKEND)
+# ========================
+.gradle/
+build/
+out/
+target/
+
+*.class
+*.log
+
+# Gradle wrapper local cache
+**/gradle-app.setting
+**/gradle-wrapper.jar
+
+# ========================
+# Node / Electron (FRONTEND)
+# ========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+dist/
+out/
+.release/
+
+# ========================
+# Environment / secrets
+# ========================
+.env
+.env.local
+.env.production
+
+# DB configs if есть
+db.properties
+application.properties
+
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+
+# ========================
+# ZIP / ARCHIVES
+# ========================
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# ========================
+# OS TEMP
+# ========================
+tmp/
+temp/
