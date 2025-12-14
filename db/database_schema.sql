@@ -1,6 +1,6 @@
 -- =================================================================
 -- ALL STORE STOCK MANAGEMENT - DATABASE SCHEMA
--- FIXED: Added BCrypt hashed passwords for test users
+-- SIMPLIFIED: Plain text passwords for educational purposes
 -- =================================================================
 
 -- Drop existing tables (в правильном порядке из-за зависимостей)
@@ -16,7 +16,7 @@ DROP TABLE IF EXISTS users CASCADE;
 CREATE TABLE users (
                        user_id SERIAL PRIMARY KEY,
                        username VARCHAR(50) UNIQUE NOT NULL,
-                       password VARCHAR(255) NOT NULL,  -- BCrypt hash (60 characters)
+                       password VARCHAR(255) NOT NULL,
                        role VARCHAR(20) NOT NULL CHECK (role IN ('Admin', 'Stock Manager', 'Cashier')),
                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -70,7 +70,7 @@ CREATE INDEX idx_products_supplier ON products(supplier_id);
 
 -- Триггер для автоматического обновления last_updated
 CREATE OR REPLACE FUNCTION update_last_updated()
-RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS $$
 BEGIN
     NEW.last_updated = CURRENT_TIMESTAMP;
 RETURN NEW;
@@ -120,22 +120,18 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_log_user ON audit_log(user_id);
 CREATE INDEX idx_audit_log_timestamp ON audit_log(timestamp);
 
-COMMENT ON TABLE audit_log IS 'Audit trail for all user actions - matches Java AuditLogHandler';
-COMMENT ON COLUMN audit_log.details IS 'Additional details about the action (can be JSON or plain text)';
+COMMENT ON TABLE audit_log IS 'Audit trail for all user actions';
+COMMENT ON COLUMN audit_log.details IS 'Additional details about the action';
 
 -- =================================================================
--- TEST DATA WITH BCRYPT HASHED PASSWORDS
+-- TEST DATA
 -- =================================================================
 
--- FIXED: Тестовые пользователи с хешированными паролями (BCrypt)
--- admin123 -> $2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYCj.MxEZsC
--- manager123 -> $2a$12$6vCXn7hFQ0gBnJMPHgfhM.mUzJhY5c6.qk8b1Zr3PqX4xQyW9N0Oy
--- cashier123 -> $2a$12$LHcV8GgHnhU9fQ7qGfCLbO3XJqbz9wC3kG7Nxm2KvQqLp8YzN3Xgm
-
+-- Тестовые пользователи (простые пароли)
 INSERT INTO users (username, password, role) VALUES
-                                                 ('admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYCj.MxEZsC', 'Admin'),
-                                                 ('manager', '$2a$12$6vCXn7hFQ0gBnJMPHgfhM.mUzJhY5c6.qk8b1Zr3PqX4xQyW9N0Oy', 'Stock Manager'),
-                                                 ('cashier', '$2a$12$LHcV8GgHnhU9fQ7qGfCLbO3XJqbz9wC3kG7Nxm2KvQqLp8YzN3Xgm', 'Cashier');
+                                                 ('admin', 'admin123', 'Admin'),
+                                                 ('manager', 'manager123', 'Stock Manager'),
+                                                 ('cashier', 'cashier123', 'Cashier');
 
 -- Тестовые поставщики
 INSERT INTO suppliers (name, contact_info, email, address) VALUES
@@ -274,24 +270,11 @@ SELECT 'transactions', COUNT(*) FROM transactions
 UNION ALL
 SELECT 'audit_log', COUNT(*) FROM audit_log;
 
--- Проверить структуру audit_log
-SELECT
-    column_name,
-    data_type,
-    character_maximum_length,
-    is_nullable
-FROM information_schema.columns
-WHERE table_name = 'audit_log'
-ORDER BY ordinal_position;
-
--- Проверить views
-SELECT * FROM v_inventory_overview LIMIT 5;
-SELECT * FROM v_daily_sales LIMIT 5;
-SELECT * FROM v_top_selling_products LIMIT 5;
-SELECT * FROM v_low_stock_products LIMIT 5;
+-- Проверить пароли пользователей
+SELECT username, password, role FROM users;
 
 -- =================================================================
--- TEST LOGIN CREDENTIALS (for reference only)
+-- TEST LOGIN CREDENTIALS
 -- =================================================================
 -- Username: admin    | Password: admin123    | Role: Admin
 -- Username: manager  | Password: manager123  | Role: Stock Manager
@@ -301,14 +284,13 @@ SELECT * FROM v_low_stock_products LIMIT 5;
 -- Success message
 DO $$
 BEGIN
-    RAISE NOTICE '=================================================================';
-    RAISE NOTICE 'Database schema created successfully!';
-    RAISE NOTICE 'SECURITY: All passwords are now BCrypt hashed';
-    RAISE NOTICE 'Compatible with Java Backend (UserHandler with BCrypt)';
-    RAISE NOTICE '=================================================================';
-    RAISE NOTICE 'Default users (passwords are hashed in database):';
-    RAISE NOTICE '  - admin/admin123 (Admin)';
-    RAISE NOTICE '  - manager/manager123 (Stock Manager)';
-    RAISE NOTICE '  - cashier/cashier123 (Cashier)';
-    RAISE NOTICE '=================================================================';
+        RAISE NOTICE '=================================================================';
+        RAISE NOTICE 'Database schema created successfully!';
+        RAISE NOTICE 'Simplified version with plain text passwords for educational use';
+        RAISE NOTICE '=================================================================';
+        RAISE NOTICE 'Default users:';
+        RAISE NOTICE '  - admin/admin123 (Admin)';
+        RAISE NOTICE '  - manager/manager123 (Stock Manager)';
+        RAISE NOTICE '  - cashier/cashier123 (Cashier)';
+        RAISE NOTICE '=================================================================';
 END $$;
