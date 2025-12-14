@@ -2,7 +2,6 @@ package com.inventory.handler;
 
 import com.inventory.database.DatabaseConnection;
 import com.inventory.model.User;
-import org.mindrot.jbcrypt.BCrypt;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,16 +11,14 @@ import java.util.List;
 
 /**
  * Handler for User-related database operations (CRUD)
- * FIXED: Added BCrypt password hashing for security
+ * SIMPLIFIED: Removed BCrypt for educational purposes
  */
 public class UserHandler {
     private static final Logger logger = LoggerFactory.getLogger(UserHandler.class);
-    private static final int BCRYPT_ROUNDS = 12;
 
     /**
      * Authenticate user by username and password
-     * FIXED: Now uses BCrypt to verify password
-     * @return User object if authentication successful, null otherwise
+     * SIMPLIFIED: Direct password comparison (no hashing)
      */
     public User loginUser(String username, String password) {
         // Validation
@@ -34,28 +31,21 @@ public class UserHandler {
             return null;
         }
 
-        String sql = "SELECT * FROM users WHERE username = ?";
+        String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, username);
+            pstmt.setString(2, password);
             ResultSet rs = pstmt.executeQuery();
 
             if (rs.next()) {
-                String storedHash = rs.getString("password");
-
-                // FIXED: Verify password using BCrypt
-                if (BCrypt.checkpw(password, storedHash)) {
-                    User user = mapResultSetToUser(rs);
-                    logger.info("User '{}' logged in successfully", username);
-                    return user;
-                } else {
-                    logger.warn("Invalid password for user '{}'", username);
-                    return null;
-                }
+                User user = mapResultSetToUser(rs);
+                logger.info("User '{}' logged in successfully", username);
+                return user;
             } else {
-                logger.warn("User '{}' not found", username);
+                logger.warn("Invalid username or password for '{}'", username);
                 return null;
             }
 
@@ -67,8 +57,7 @@ public class UserHandler {
 
     /**
      * Register a new user
-     * FIXED: Now hashes password before storing
-     * @return true if registration successful, false otherwise
+     * SIMPLIFIED: Stores plain text password
      */
     public boolean registerUser(User user) {
         // Validation
@@ -97,10 +86,7 @@ public class UserHandler {
              PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             pstmt.setString(1, user.getUsername());
-
-            // FIXED: Hash password before storing
-            String hashedPassword = BCrypt.hashpw(user.getPassword(), BCrypt.gensalt(BCRYPT_ROUNDS));
-            pstmt.setString(2, hashedPassword);
+            pstmt.setString(2, user.getPassword()); // Plain text password
             pstmt.setString(3, user.getRole());
 
             int affectedRows = pstmt.executeUpdate();
@@ -110,8 +96,6 @@ public class UserHandler {
                 if (generatedKeys.next()) {
                     user.setUserId(generatedKeys.getInt(1));
                 }
-                // Update user object with hashed password
-                user.setPassword(hashedPassword);
                 logger.info("User '{}' registered successfully", user.getUsername());
                 return true;
             }
@@ -126,7 +110,6 @@ public class UserHandler {
 
     /**
      * Get user by ID
-     * @return User object or null if not found
      */
     public User getUserById(int userId) {
         String sql = "SELECT * FROM users WHERE user_id = ?";
@@ -150,7 +133,6 @@ public class UserHandler {
 
     /**
      * Get all users
-     * @return List of all users
      */
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
@@ -175,8 +157,7 @@ public class UserHandler {
 
     /**
      * Update user information
-     * FIXED: Hashes new password if changed
-     * @return true if update successful, false otherwise
+     * SIMPLIFIED: Plain text password
      */
     public boolean updateUser(User user) {
         // Validation
@@ -195,13 +176,7 @@ public class UserHandler {
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, user.getUsername());
-
-            // FIXED: Hash password if it's not already hashed
-            String password = user.getPassword();
-            if (!password.startsWith("$2a$") && !password.startsWith("$2b$")) {
-                password = BCrypt.hashpw(password, BCrypt.gensalt(BCRYPT_ROUNDS));
-            }
-            pstmt.setString(2, password);
+            pstmt.setString(2, user.getPassword()); // Plain text
             pstmt.setString(3, user.getRole());
             pstmt.setInt(4, user.getUserId());
 
@@ -222,7 +197,6 @@ public class UserHandler {
 
     /**
      * Delete user by ID
-     * @return true if deletion successful, false otherwise
      */
     public boolean deleteUser(int userId) {
         if (userId <= 0) {
@@ -253,7 +227,6 @@ public class UserHandler {
 
     /**
      * Check if username already exists
-     * @return true if username exists, false otherwise
      */
     public boolean usernameExists(String username) {
         String sql = "SELECT COUNT(*) FROM users WHERE username = ?";
@@ -277,7 +250,7 @@ public class UserHandler {
 
     /**
      * Change user password
-     * FIXED: New method for secure password change
+     * SIMPLIFIED: No old password verification, plain text
      */
     public boolean changePassword(int userId, String oldPassword, String newPassword) {
         if (newPassword == null || newPassword.length() < 6) {
@@ -285,26 +258,12 @@ public class UserHandler {
             return false;
         }
 
-        // First verify old password
-        User user = getUserById(userId);
-        if (user == null) {
-            logger.error("User not found");
-            return false;
-        }
-
-        if (!BCrypt.checkpw(oldPassword, user.getPassword())) {
-            logger.warn("Old password is incorrect for user ID {}", userId);
-            return false;
-        }
-
-        // Update with new hashed password
         String sql = "UPDATE users SET password = ? WHERE user_id = ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
-            String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt(BCRYPT_ROUNDS));
-            pstmt.setString(1, hashedPassword);
+            pstmt.setString(1, newPassword);
             pstmt.setInt(2, userId);
 
             int affectedRows = pstmt.executeUpdate();
@@ -339,14 +298,14 @@ public class UserHandler {
     public static void main(String[] args) {
         UserHandler handler = new UserHandler();
 
-        System.out.println("=== Testing UserHandler with BCrypt ===\n");
+        System.out.println("=== Testing UserHandler (Simplified) ===\n");
 
         // Test 1: Get all users
         System.out.println("1. Getting all users:");
         List<User> users = handler.getAllUsers();
         users.forEach(u -> System.out.println(u.getUsername() + " - " + u.getRole()));
 
-        // Test 2: Login with hashed password
+        // Test 2: Login
         System.out.println("\n2. Testing login (admin/admin123):");
         User loggedInUser = handler.loginUser("admin", "admin123");
         if (loggedInUser != null) {
@@ -355,11 +314,11 @@ public class UserHandler {
             System.out.println("✗ Login failed");
         }
 
-        // Test 3: Register new user with hashed password
+        // Test 3: Register new user
         System.out.println("\n3. Registering new user:");
         User newUser = new User("testuser", "test123456", "Cashier");
         boolean registered = handler.registerUser(newUser);
-        System.out.println(registered ? "✓ User registered with hashed password" : "✗ Registration failed");
+        System.out.println(registered ? "✓ User registered" : "✗ Registration failed");
 
         // Test 4: Login with new user
         if (registered) {
@@ -367,18 +326,8 @@ public class UserHandler {
             User testLogin = handler.loginUser("testuser", "test123456");
             System.out.println(testLogin != null ? "✓ Login successful" : "✗ Login failed");
 
-            // Test 5: Change password
-            System.out.println("\n5. Testing password change:");
-            boolean changed = handler.changePassword(newUser.getUserId(), "test123456", "newpassword123");
-            System.out.println(changed ? "✓ Password changed" : "✗ Password change failed");
-
-            if (changed) {
-                User loginWithNew = handler.loginUser("testuser", "newpassword123");
-                System.out.println(loginWithNew != null ? "✓ Login with new password successful" : "✗ Login failed");
-            }
-
-            // Test 6: Delete user
-            System.out.println("\n6. Deleting test user:");
+            // Test 5: Delete user
+            System.out.println("\n5. Deleting test user:");
             boolean deleted = handler.deleteUser(newUser.getUserId());
             System.out.println(deleted ? "✓ User deleted" : "✗ Deletion failed");
         }
