@@ -209,11 +209,11 @@ public class ClientHandler implements Runnable {
 
         // Check rate limiting
         LoginAttempt attempt = loginAttempts.get(key);
-        if (attempt != null && attempt.isLocked()) {
-            return createResponse(false,
-                    "Too many login attempts. Try again in " + attempt.getRemainingLockoutMinutes() + " minutes.",
-                    null);
-        }
+        //if (attempt != null && attempt.isLocked()) {
+        //    return createResponse(false,
+        //            "Too many login attempts. Try again in " + attempt.getRemainingLockoutMinutes() + " minutes.",
+        //            null);
+        //}
 
         User user = userHandler.loginUser(username, password);
 
@@ -326,60 +326,113 @@ public class ClientHandler implements Runnable {
                 product);
     }
 
-    private JsonObject handleAddProduct(JsonObject request) {
-        if (!isAdminOrManager()) {
-            return createResponse(false, "Only admins and managers can add products", null);
-        }
+   private JsonObject handleAddProduct(JsonObject request) {
+       if (!isAdminOrManager()) {
+           return createResponse(false, "Only admins and managers can add products", null);
+       }
 
-        Product product = gson.fromJson(request.get("product"), Product.class);
-        boolean success = productHandler.addProduct(product);
+       try {
+           Product product = new Product();
+           product.setName(request.get("name").getAsString());
+           product.setCategory(request.get("category").getAsString());
+           product.setUnitPrice(request.get("unitPrice").getAsBigDecimal());
+           product.setQuantity(request.get("quantity").getAsInt());
 
-        if (success) {
-            auditLogHandler.logAction(authenticatedUser.getUserId(), "ADD_PRODUCT",
-                    String.format("Added product: %s (Category: %s, Price: %s)",
-                            product.getName(), product.getCategory(), product.getUnitPrice()));
-        }
+           boolean success = productHandler.addProduct(product);
 
-        return createResponse(success,
-                success ? "Product added successfully" : "Failed to add product",
-                success ? product : null);
-    }
+           if (success) {
+               auditLogHandler.logAction(
+                       authenticatedUser.getUserId(),
+                       "ADD_PRODUCT",
+                       "Added product: " + product.getName()
+               );
+           }
+
+           return createResponse(
+                   success,
+                   success ? "Product added successfully" : "Failed to add product",
+                   success ? product : null
+           );
+
+       } catch (Exception e) {
+           logger.error("Error parsing add_product request", e);
+           return createResponse(false, "Invalid product data", null);
+       }
+   }
+
 
     private JsonObject handleUpdateProduct(JsonObject request) {
         if (!isAdminOrManager()) {
             return createResponse(false, "Only admins and managers can update products", null);
         }
 
-        Product product = gson.fromJson(request.get("product"), Product.class);
-        boolean success = productHandler.updateProduct(product);
+        try {
+            if (!request.has("productId")) {
+                return createResponse(false, "Product ID is required", null);
+            }
 
-        if (success) {
-            auditLogHandler.logAction(authenticatedUser.getUserId(), "UPDATE_PRODUCT",
-                    "Updated product ID " + product.getProductId());
+            Product product = new Product();
+            product.setProductId(request.get("productId").getAsInt());
+            product.setName(request.get("name").getAsString());
+            product.setCategory(request.get("category").getAsString());
+            product.setUnitPrice(request.get("unitPrice").getAsBigDecimal());
+            product.setQuantity(request.get("quantity").getAsInt());
+
+            if (product.getProductId() <= 0) {
+                return createResponse(false, "Invalid product ID", null);
+            }
+
+            boolean success = productHandler.updateProduct(product);
+
+            if (success) {
+                auditLogHandler.logAction(
+                        authenticatedUser.getUserId(),
+                        "UPDATE_PRODUCT",
+                        "Updated product ID " + product.getProductId()
+                );
+            }
+
+            return createResponse(
+                    success,
+                    success ? "Product updated successfully" : "Failed to update product",
+                    null
+            );
+
+        } catch (Exception e) {
+            logger.error("Error parsing update_product request", e);
+            return createResponse(false, "Invalid update product data", null);
         }
-
-        return createResponse(success,
-                success ? "Product updated successfully" : "Failed to update product",
-                null);
     }
 
+
+
     private JsonObject handleDeleteProduct(JsonObject request) {
+
         if (!isAdmin()) {
             return createResponse(false, "Only admins can delete products", null);
         }
 
         int productId = request.get("product_id").getAsInt();
-        boolean success = productHandler.deleteProduct(productId);
+
+        boolean success = productHandler.deactivateProduct(productId);
 
         if (success) {
-            auditLogHandler.logAction(authenticatedUser.getUserId(), "DELETE_PRODUCT",
-                    "Deleted product ID " + productId);
+            auditLogHandler.logAction(
+                    authenticatedUser.getUserId(),
+                    "DEACTIVATE_PRODUCT",
+                    "Deactivated product ID " + productId
+            );
         }
 
-        return createResponse(success,
-                success ? "Product deleted successfully" : "Failed to delete product",
-                null);
+        return createResponse(
+                success,
+                success ? "Product deactivated" : "Product not found or already inactive",
+                null
+        );
     }
+
+
+
 
     private JsonObject handleSearchProducts(JsonObject request) {
         if (!isAuthenticated()) {
@@ -485,25 +538,49 @@ public class ClientHandler implements Runnable {
 
     private JsonObject handleRecordTransaction(JsonObject request) {
         if (!isAuthenticated()) {
-            return createResponse(false, "Not authenticated", null);
+            return createResponse(false, "Authentication required", null);
         }
 
-        Transaction transaction = gson.fromJson(request.get("transaction"), Transaction.class);
-        transaction.setUserId(authenticatedUser.getUserId());
+        try {
+            JsonObject tx = request.getAsJsonObject("transaction");
 
-        boolean success = transactionHandler.recordTransaction(transaction);
+            if (tx == null) {
+                return createResponse(false, "Transaction data is required", null);
+            }
 
-        if (success) {
-            auditLogHandler.logAction(authenticatedUser.getUserId(), "RECORD_TRANSACTION",
-                    String.format("%s: Product ID %d, Quantity %d, Total: %s",
-                            transaction.getTxnType(), transaction.getProductId(),
-                            transaction.getQuantity(), transaction.getTotalPrice()));
-        }
+            Transaction transaction = new Transaction();
+            transaction.setProductId(tx.get("productId").getAsInt());
+            transaction.setQuantity(tx.get("quantity").getAsInt());
+            transaction.setTxnType(tx.get("txnType").getAsString());
+            transaction.setNotes(tx.has("notes") ? tx.get("notes").getAsString() : null);
 
-        return createResponse(success,
+            // userId ВСЕГДА берём с сервера
+            transaction.setUserId(authenticatedUser.getUserId());
+
+            boolean success = transactionHandler.recordTransaction(transaction);
+
+            if (success) {
+                auditLogHandler.logAction(
+                    authenticatedUser.getUserId(),
+                    "RECORD_TRANSACTION",
+                    transaction.getTxnType() +
+                    " productId=" + transaction.getProductId() +
+                    " qty=" + transaction.getQuantity()
+                );
+            }
+
+            return createResponse(
+                success,
                 success ? "Transaction recorded successfully" : "Failed to record transaction",
-                success ? transaction : null);
+                null
+            );
+
+        } catch (Exception e) {
+            logger.error("Error parsing record_transaction request", e);
+            return createResponse(false, "Invalid transaction data", null);
+        }
     }
+
 
     private JsonObject handleGetAllTransactions() {
         if (!isAuthenticated()) {

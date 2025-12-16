@@ -17,12 +17,32 @@ import java.util.List;
 public class ProductHandler {
     private static final Logger logger = LoggerFactory.getLogger(ProductHandler.class);
 
+    public boolean hasTransactions(int productId) {
+        String sql = "SELECT 1 FROM transactions WHERE product_id = ? LIMIT 1";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, productId);
+            ResultSet rs = ps.executeQuery();
+            return rs.next();
+
+        } catch (SQLException e) {
+            logger.error("Error checking transactions for product {}", productId, e);
+            return true; // безопаснее запретить удаление
+        }
+    }
+
     /**
      * Add a new product to inventory
      * FIXED: Added validation before insert
      * @return true if product added successfully
      */
     public boolean addProduct(Product product) {
+    if (product == null) {
+            logger.error("Product is null in addProduct()");
+            return false;
+        }
         // Validation
         if (product.getName() == null || product.getName().trim().isEmpty()) {
             logger.error("Product name cannot be empty");
@@ -232,6 +252,11 @@ public class ProductHandler {
      * @return true if update successful
      */
     public boolean updateProduct(Product product) {
+     if (product == null) {
+            logger.error("Product is null in updateProduct()");
+            return false;
+        }
+
         // Validation
         if (product.getProductId() <= 0) {
             logger.error("Invalid product ID");
@@ -325,32 +350,24 @@ public class ProductHandler {
      * Delete product by ID
      * @return true if deletion successful
      */
-    public boolean deleteProduct(int productId) {
-        if (productId <= 0) {
-            logger.error("Invalid product ID");
-            return false;
-        }
+    public boolean deactivateProduct(int productId) {
+        if (productId <= 0) return false;
 
-        String sql = "DELETE FROM products WHERE product_id = ?";
+        String sql = "UPDATE products SET active = false WHERE product_id = ? AND active = true";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            pstmt.setInt(1, productId);
-            int affectedRows = pstmt.executeUpdate();
-
-            if (affectedRows > 0) {
-                logger.info("Product with ID {} deleted successfully", productId);
-                return true;
-            }
-
-            return false;
+            ps.setInt(1, productId);
+            return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            logger.error("Error deleting product with ID {}", productId, e);
+            logger.error("Error deactivating product {}", productId, e);
             return false;
         }
     }
+
+
 
     /**
      * Search products by name (partial match)

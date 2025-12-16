@@ -26,75 +26,67 @@ public class TransactionHandler {
      * @return true if transaction recorded successfully
      */
     public boolean recordTransaction(Transaction transaction) {
-        // Validation
-        if (transaction.getProductId() <= 0) {
-            logger.error("Invalid product ID");
-            return false;
-        }
-        if (transaction.getUserId() <= 0) {
-            logger.error("Invalid user ID");
-            return false;
-        }
-        if (transaction.getQuantity() <= 0) {
-            logger.error("Quantity must be positive");
-            return false;
-        }
-        if (transaction.getTotalPrice() == null || transaction.getTotalPrice().compareTo(BigDecimal.ZERO) < 0) {
-            logger.error("Invalid total price");
-            return false;
-        }
-        if (!transaction.isSale() && !transaction.isPurchase()) {
-            logger.error("Invalid transaction type: {}", transaction.getTxnType());
+        if (transaction == null) {
+            logger.error("Transaction is null");
             return false;
         }
 
-        String insertSql = "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) VALUES (?, ?, ?, ?, ?, ?)";
+        if (transaction.getProductId() <= 0 ||
+            transaction.getUserId() <= 0 ||
+            transaction.getQuantity() <= 0 ||
+            (!transaction.isSale() && !transaction.isPurchase())) {
+            logger.error("Invalid transaction data");
+            return false;
+        }
+
         String updateSql = transaction.isSale()
-                ? "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?"
-                : "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
+            ? "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?"
+            : "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
+
+        String insertSql =
+            "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) " +
+            "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
 
-            try (PreparedStatement insertStmt = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS);
-                 PreparedStatement updateStmt = conn.prepareStatement(updateSql)) {
-
-                // Insert transaction
-                insertStmt.setInt(1, transaction.getProductId());
-                insertStmt.setInt(2, transaction.getUserId());
-                insertStmt.setString(3, transaction.getTxnType());
-                insertStmt.setInt(4, transaction.getQuantity());
-                insertStmt.setBigDecimal(5, transaction.getTotalPrice());
-                insertStmt.setString(6, transaction.getNotes());
-
-                int affectedRows = insertStmt.executeUpdate();
-
-                if (affectedRows > 0) {
-                    ResultSet generatedKeys = insertStmt.getGeneratedKeys();
-                    if (generatedKeys.next()) {
-                        transaction.setTxnId(generatedKeys.getInt(1));
-                    }
-                }
-
-                // Update product quantity
+            try (
+                PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                PreparedStatement insertStmt = conn.prepareStatement(insertSql)
+            ) {
+                // 1️⃣ Update stock first
                 updateStmt.setInt(1, transaction.getQuantity());
                 updateStmt.setInt(2, transaction.getProductId());
-
                 if (transaction.isSale()) {
                     updateStmt.setInt(3, transaction.getQuantity());
                 }
 
                 int updated = updateStmt.executeUpdate();
-
                 if (updated == 0 && transaction.isSale()) {
                     conn.rollback();
                     logger.error("Insufficient stock for product ID {}", transaction.getProductId());
                     return false;
                 }
 
+                // 2️⃣ Calculate total price on backend
+                BigDecimal unitPrice = getProductPrice(conn, transaction.getProductId());
+                BigDecimal totalPrice = unitPrice.multiply(
+                    BigDecimal.valueOf(transaction.getQuantity())
+                );
+
+                // 3️⃣ Insert transaction
+                insertStmt.setInt(1, transaction.getProductId());
+                insertStmt.setInt(2, transaction.getUserId());
+                insertStmt.setString(3, transaction.getTxnType());
+                insertStmt.setInt(4, transaction.getQuantity());
+                insertStmt.setBigDecimal(5, totalPrice);
+                insertStmt.setString(6, transaction.getNotes());
+
+                insertStmt.executeUpdate();
+
                 conn.commit();
-                logger.info("Transaction recorded: {} of {} units for product ID {}",
-                        transaction.getTxnType(), transaction.getQuantity(), transaction.getProductId());
+                logger.info("{} transaction completed for product ID {}",
+                    transaction.getTxnType(), transaction.getProductId());
                 return true;
 
             } catch (SQLException e) {
@@ -106,6 +98,7 @@ public class TransactionHandler {
             return false;
         }
     }
+
 
     /**
      * Get transaction by ID
@@ -349,4 +342,19 @@ public class TransactionHandler {
                 rs.getString("notes")
         );
     }
+    private BigDecimal getProductPrice(Connection conn, int productId) throws SQLException {
+        String sql = "SELECT unit_price FROM products WHERE product_id = ?";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, productId);
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getBigDecimal("unit_price");
+            } else {
+                throw new SQLException("Product not found for ID " + productId);
+            }
+        }
+    }
+
 }
