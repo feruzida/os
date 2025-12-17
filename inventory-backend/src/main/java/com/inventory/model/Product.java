@@ -15,6 +15,8 @@ public class Product {
     private int quantity;
     private Integer supplierId; // Can be null
     private LocalDateTime lastUpdated;
+    private boolean active = true;
+
 
     // Constructors
     public Product() {
@@ -36,6 +38,14 @@ public class Product {
         this.quantity = quantity;
         this.supplierId = supplierId;
         this.lastUpdated = lastUpdated;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     // Getters and Setters

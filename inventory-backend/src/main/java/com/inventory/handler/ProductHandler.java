@@ -131,7 +131,7 @@ public class ProductHandler {
      */
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products ORDER BY category, name";
+        String sql = "SELECT * FROM products ORDER BY active DESC, product_id ASC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -140,8 +140,6 @@ public class ProductHandler {
             while (rs.next()) {
                 products.add(mapResultSetToProduct(rs));
             }
-
-            logger.info("Retrieved {} products from database", products.size());
 
         } catch (SQLException e) {
             logger.error("Error fetching all products", e);
@@ -161,7 +159,7 @@ public class ProductHandler {
         }
 
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE category = ? ORDER BY name";
+        String sql = "SELECT * FROM products WHERE category = ? AND active = true ORDER BY product_id ASC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -193,7 +191,7 @@ public class ProductHandler {
         }
 
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE supplier_id = ? ORDER BY name";
+        String sql = "SELECT * FROM products WHERE supplier_id = ? AND active = true ORDER BY product_id ASC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -225,7 +223,7 @@ public class ProductHandler {
         }
 
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE quantity <= ? ORDER BY quantity";
+        String sql = "SELECT * FROM products WHERE quantity <= ? AND active = true ORDER BY quantity";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -380,7 +378,7 @@ public class ProductHandler {
         }
 
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT * FROM products WHERE name ILIKE ? ORDER BY name";
+        String sql = "SELECT * FROM products WHERE name ILIKE ? AND active = true ORDER BY product_id ASC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -410,7 +408,7 @@ public class ProductHandler {
             supplierId = null;
         }
 
-        return new Product(
+        Product product = new Product(
                 rs.getInt("product_id"),
                 rs.getString("name"),
                 rs.getString("category"),
@@ -419,5 +417,10 @@ public class ProductHandler {
                 supplierId,
                 rs.getTimestamp("last_updated").toLocalDateTime()
         );
+
+        // ✅ Добавляем поле active
+        product.setActive(rs.getBoolean("active"));
+
+        return product;
     }
 }

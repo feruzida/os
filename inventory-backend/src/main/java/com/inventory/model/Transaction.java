@@ -115,6 +115,7 @@ public class Transaction {
         return "Purchase".equalsIgnoreCase(txnType);
     }
 
+
     public BigDecimal getUnitPrice() {
         return totalPrice.divide(BigDecimal.valueOf(quantity), 2, java.math.RoundingMode.HALF_UP);
     }

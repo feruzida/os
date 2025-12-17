@@ -559,21 +559,25 @@ public class ClientHandler implements Runnable {
 
             boolean success = transactionHandler.recordTransaction(transaction);
 
+            Product updatedProduct = null;
             if (success) {
+                updatedProduct = productHandler.getProductById(transaction.getProductId());
+
                 auditLogHandler.logAction(
-                    authenticatedUser.getUserId(),
-                    "RECORD_TRANSACTION",
-                    transaction.getTxnType() +
-                    " productId=" + transaction.getProductId() +
-                    " qty=" + transaction.getQuantity()
+                        authenticatedUser.getUserId(),
+                        "RECORD_TRANSACTION",
+                        transaction.getTxnType() +
+                                " productId=" + transaction.getProductId() +
+                                " qty=" + transaction.getQuantity()
                 );
             }
 
             return createResponse(
-                success,
-                success ? "Transaction recorded successfully" : "Failed to record transaction",
-                null
+                    success,
+                    success ? "Transaction recorded successfully" : "Failed to record transaction",
+                    updatedProduct
             );
+
 
         } catch (Exception e) {
             logger.error("Error parsing record_transaction request", e);

@@ -26,55 +26,50 @@ public class TransactionHandler {
      * @return true if transaction recorded successfully
      */
     public boolean recordTransaction(Transaction transaction) {
-        if (transaction == null) {
-            logger.error("Transaction is null");
-            return false;
-        }
+
+        if (transaction == null) return false;
 
         if (transaction.getProductId() <= 0 ||
-            transaction.getUserId() <= 0 ||
-            transaction.getQuantity() <= 0 ||
-            (!transaction.isSale() && !transaction.isPurchase())) {
+                transaction.getUserId() <= 0 ||
+                transaction.getQuantity() <= 0 ||
+                (!transaction.isSale() && !transaction.isPurchase())) {
             logger.error("Invalid transaction data");
             return false;
         }
 
         String updateSql = transaction.isSale()
-            ? "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?"
-            : "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
+                ? "UPDATE products SET quantity = quantity - ? WHERE product_id = ? AND quantity >= ?"
+                : "UPDATE products SET quantity = quantity + ? WHERE product_id = ?";
 
         String insertSql =
-            "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) " +
-            "VALUES (?, ?, ?, ?, ?, ?)";
+                "INSERT INTO transactions (product_id, user_id, txn_type, quantity, total_price, notes) " +
+                        "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
 
             try (
-                PreparedStatement updateStmt = conn.prepareStatement(updateSql);
-                PreparedStatement insertStmt = conn.prepareStatement(insertSql)
+                    PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+                    PreparedStatement insertStmt = conn.prepareStatement(insertSql)
             ) {
-                // 1️⃣ Update stock first
                 updateStmt.setInt(1, transaction.getQuantity());
                 updateStmt.setInt(2, transaction.getProductId());
+
                 if (transaction.isSale()) {
                     updateStmt.setInt(3, transaction.getQuantity());
                 }
 
                 int updated = updateStmt.executeUpdate();
-                if (updated == 0 && transaction.isSale()) {
+                if (updated == 0) {
                     conn.rollback();
-                    logger.error("Insufficient stock for product ID {}", transaction.getProductId());
                     return false;
                 }
 
-                // 2️⃣ Calculate total price on backend
                 BigDecimal unitPrice = getProductPrice(conn, transaction.getProductId());
                 BigDecimal totalPrice = unitPrice.multiply(
-                    BigDecimal.valueOf(transaction.getQuantity())
+                        BigDecimal.valueOf(transaction.getQuantity())
                 );
 
-                // 3️⃣ Insert transaction
                 insertStmt.setInt(1, transaction.getProductId());
                 insertStmt.setInt(2, transaction.getUserId());
                 insertStmt.setString(3, transaction.getTxnType());
@@ -83,10 +78,7 @@ public class TransactionHandler {
                 insertStmt.setString(6, transaction.getNotes());
 
                 insertStmt.executeUpdate();
-
                 conn.commit();
-                logger.info("{} transaction completed for product ID {}",
-                    transaction.getTxnType(), transaction.getProductId());
                 return true;
 
             } catch (SQLException e) {
@@ -98,6 +90,7 @@ public class TransactionHandler {
             return false;
         }
     }
+
 
 
     /**
