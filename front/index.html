@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Management System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= LOGIN SECTION ================= -->
+<div id="loginSection" class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+      </svg>
+      <h2>Inventory System</h2>
+      <p class="login-subtitle">Sign in to continue</p>
+    </div>
+
+    <div class="login-form">
+      <div class="form-group">
+        <label for="user">Username</label>
+        <input type="text" id="user" placeholder="Enter your username" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="pass">Password</label>
+        <input type="password" id="pass" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="login()">
+        <span>Sign In</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+
+      <div id="errorBox" class="error-message"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SECTION ================= -->
+<div id="appSection" class="app-wrapper" style="display:none">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="header-left">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+        </svg>
+        <div>
+          <h1>Inventory Management</h1>
+          <p class="subtitle">Track and manage your goods inventory</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="roleLabel" class="user-badge"></span>
+        <button class="btn btn-outline" id="logoutBtn" onclick="logout()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Total Items</span>
+          <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+        </div>
+        <div class="stat-value" id="totalItems">0</div>
+        <p class="stat-description" id="totalProducts">Across 0 products</p>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Total Value</span>
+          <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+        </div>
+        <div class="stat-value" id="totalValue">0</div>
+        <p class="stat-description">Current inventory value</p>
+      </div>
+
+      <div class="stat-card stat-card-warning">
+        <div class="stat-header">
+          <span class="stat-title">Low Stock Items</span>
+          <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div class="stat-value text-destructive" id="lowStock">0</div>
+        <p class="stat-description">Need restocking</p>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <span class="stat-title">Categories</span>
+          <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="stat-value" id="categories">0</div>
+        <p class="stat-description">Product categories</p>
+      </div>
+    </div>
+
+    <!-- Inventory Table Card -->
+    <div class="card">
+      <div class="card-header">
+        <h2 class="card-title">Inventory Items</h2>
+        <div class="card-actions">
+          <select id="categoryFilter" class="select-input" onchange="applyCategoryFilter()">
+            <option value="ALL">All Categories</option>
+          </select>
+          <button class="btn btn-outline" onclick="loadProducts()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+          <button
+                  id="addProductBtn"
+                  class="btn btn-primary"
+                  onclick="openProductModal()"
+          >
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add New Item
+          </button>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <div class="table-container">
+          <table class="inventory-table">
+              <colgroup>
+                <col style="width: 60px">
+                <col style="width: 260px">
+                <col style="width: 160px">
+                <col style="width: 140px">
+                <col style="width: 120px">
+                <col style="width: 140px">
+                <col style="width: 90px">
+                <col style="width: 110px">
+                <col style="width: 90px">
+              </colgroup>
+            <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Quantity</th>
+              <th>Status</th>
+              <th class="text-center">Sale</th>
+              <th class="text-center">Purchase</th>
+              <th class="text-center">Delete</th>
+            </tr>
+            </thead>
+            <tbody id="productsTableBody">
+            <!-- Populated by JavaScript -->
+            </tbody>
+          </table>
+          <div id="emptyState" class="empty-state" style="display: none;">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <div class="empty-state-text">No items found</div>
+            <p class="empty-state-description">Add your first product to get started</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= ADD/EDIT MODAL ================= -->
+<div id="productModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeProductModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add New Item</h3>
+      <button class="modal-close" onclick="closeProductModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form class="modal-form" onsubmit="return false;">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pName">Item Name *</label>
+          <input type="text" id="pName" placeholder="Enter item name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pCategory">Category *</label>
+          <input
+                  type="text"
+                  id="pCategory"
+                  list="categoryList"
+                  placeholder="Select or type category"
+                  required
+          >
+
+          <datalist id="categoryList">
+            <!-- заполняется из JS -->
+          </datalist>
+
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pPrice">Unit Price *</label>
+          <input type="number" id="pPrice" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pQty">Quantity *</label>
+          <input type="number" id="pQty" min="0" placeholder="0" required>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeProductModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="addBtn" onclick="addProduct()">Add Item</button>
+        <button type="button" class="btn btn-primary" id="updateBtn" onclick="testUpdate()">Update</button>
+        <button type="button" class="btn btn-destructive" id="deleteBtn" onclick="testDelete()">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+<!-- ================= TRANSACTION MODAL ================= -->
+<div id="txnModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeTxnModal()"></div>
+
+  <div class="modal-content compact">
+    <div class="modal-header">
+      <h3 id="txnTitle">Transaction</h3>
+      <button class="modal-close" onclick="closeTxnModal()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p id="txnInfo" style="margin-bottom: 12px;"></p>
+
+      <div class="form-group">
+        <label for="txnQty">Quantity</label>
+        <input
+                type="number"
+                id="txnQty"
+                min="1"
+                value="1"
+                placeholder="Enter quantity"
+        />
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeTxnModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmTransaction()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
