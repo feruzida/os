@@ -36,13 +36,14 @@ CREATE TABLE suppliers (
                            contact_info VARCHAR(255),
                            email VARCHAR(100),
                            address TEXT,
+                           active BOOLEAN NOT NULL DEFAULT true,
                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                            CONSTRAINT supplier_name_not_empty CHECK (LENGTH(TRIM(name)) > 0)
 );
 
 CREATE INDEX idx_suppliers_name ON suppliers(name);
-
+CREATE INDEX idx_suppliers_active ON suppliers(active);
 -- =================================================================
 -- PRODUCTS TABLE (SOFT DELETE ENABLED)
 -- =================================================================
@@ -52,7 +53,7 @@ CREATE TABLE products (
                           category VARCHAR(50),
                           unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
                           quantity INT NOT NULL DEFAULT 0 CHECK (quantity >= 0),
-                          supplier_id INT REFERENCES suppliers(supplier_id) ON DELETE SET NULL,
+                          supplier_id INT REFERENCES suppliers(supplier_id),
                           active BOOLEAN NOT NULL DEFAULT true,
                           last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -122,10 +123,10 @@ INSERT INTO users (username, password, role) VALUES
                                                  ('manager', 'manager123', 'Stock Manager'),
                                                  ('cashier', 'cashier123', 'Cashier');
 
-INSERT INTO suppliers (name, contact_info, email, address) VALUES
-                                                               ('Coca-Cola Uzbekistan', '+998 71 123 4567', 'info@coca-cola.uz', 'Tashkent, Yunusabad'),
-                                                               ('PepsiCo Central Asia', '+998 71 234 5678', 'sales@pepsi.uz', 'Tashkent, Chilanzar'),
-                                                               ('Local Dairy Farm', '+998 90 123 4567', 'dairy@farm.uz', 'Tashkent Region');
+INSERT INTO suppliers (name, contact_info, email, address, active) VALUES
+                                                                       ('Coca-Cola Uzbekistan', '+998 71 123 4567', 'info@coca-cola.uz', 'Tashkent, Yunusabad', true),
+                                                                       ('PepsiCo Central Asia', '+998 71 234 5678', 'sales@pepsi.uz', 'Tashkent, Chilanzar', true),
+                                                                       ('Local Dairy Farm', '+998 90 123 4567', 'dairy@farm.uz', 'Tashkent Region', true);
 
 INSERT INTO products (name, category, unit_price, quantity, supplier_id, active) VALUES
                                                                                      ('Coca-Cola 1.5L', 'Beverages', 8500.00, 100, 1, true),
@@ -160,7 +161,9 @@ SELECT
     COALESCE(s.name, 'No Supplier') AS supplier_name,
     p.active
 FROM products p
-         LEFT JOIN suppliers s ON p.supplier_id = s.supplier_id
+         LEFT JOIN suppliers s
+                   ON p.supplier_id = s.supplier_id
+                       AND s.active = true
 WHERE p.active = true;
 
 CREATE OR REPLACE VIEW v_low_stock_products AS
