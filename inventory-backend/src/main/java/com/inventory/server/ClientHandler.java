@@ -15,9 +15,12 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import com.inventory.model.ActiveClient;
+import com.inventory.server.ActiveClientRegistry;
 
 /**
  * Handles individual client connections in separate threads
@@ -47,7 +50,7 @@ public class ClientHandler implements Runnable {
     private SupplierHandler supplierHandler;
     private TransactionHandler transactionHandler;
     private AuditLogHandler auditLogHandler;
-
+    private ReportHandler reportHandler;
     // Current authenticated user
     private User authenticatedUser;
 
@@ -70,6 +73,7 @@ public class ClientHandler implements Runnable {
         this.supplierHandler = new SupplierHandler();
         this.transactionHandler = new TransactionHandler();
         this.auditLogHandler = new AuditLogHandler();
+        this.reportHandler = new ReportHandler();
     }
 
     @Override
@@ -84,8 +88,19 @@ public class ClientHandler implements Runnable {
                     clientSocket.getInetAddress().getHostAddress(),
                     clientSocket.getPort());
 
+            // ✅ NEW: register connected socket (NO AUTH LOGIC)
+            ActiveClientRegistry.add(
+                    new ActiveClient(
+                            clientId,
+                            clientSocket.getInetAddress().getHostAddress(),
+                            clientSocket.getPort(),
+                            LocalDateTime.now()
+                    )
+            );
+
             // Send welcome message
             sendResponse(createResponse(true, "Connected to Inventory Server", null));
+
 
             // Process client requests
             String request;
@@ -179,7 +194,38 @@ public class ClientHandler implements Runnable {
                 // ========== AUDIT LOG ACTIONS ==========
                 case "get_audit_logs":
                     return handleGetAuditLogs();
+                case "get_connected_clients":
+                    return handleGetConnectedClients();
+                // ========== REPORT ACTIONS ==========
+                case "get_sales_summary":
+                    return handleGetSalesSummary(request);
+                case "get_today_sales":
+                    return handleGetTodaySales();
+                case "get_weekly_sales":
+                    return handleGetWeeklySales();
+                case "get_monthly_sales_report":
+                    return handleGetMonthlySalesReport();
+                case "get_top_selling_products":
+                    return handleGetTopSellingProducts(request);
+                case "get_sales_by_category":
+                    return handleGetSalesByCategory(request);
+                case "get_inventory_status":
+                    return handleGetInventoryStatus();
+                case "get_products_by_stock_level":
+                    return handleGetProductsByStockLevel();
+                case "get_transaction_stats":
+                    return handleGetTransactionStats(request);
+                // ========== SUPPLIER REPORT ACTIONS ========== W
+                case "get_supplier_performance":
+                    return handleGetSupplierPerformance(request);
+                case "get_all_suppliers_summary":
+                    return handleGetAllSuppliersSummary();
 
+               // ========== USER ACTIVITY REPORT ACTIONS ==========
+                case "get_user_activity_report":
+                    return handleGetUserActivityReport(request);
+                case "get_most_active_users":
+                    return handleGetMostActiveUsers(request);
                 default:
                     return createResponse(false, "Unknown action: " + action, null);
             }
@@ -193,8 +239,9 @@ public class ClientHandler implements Runnable {
      * FIXED: Check if action requires authentication
      */
     private boolean requiresAuth(String action) {
-        return !action.equals("login");
+        return !List.of("login", "logout").contains(action);
     }
+
 
     // ========== USER ACTION HANDLERS ==========
 
@@ -218,16 +265,23 @@ public class ClientHandler implements Runnable {
         User user = userHandler.loginUser(username, password);
 
         if (user != null) {
-            loginAttempts.remove(key); // Clear failed attempts on success
+            loginAttempts.remove(key);
             authenticatedUser = user;
 
-            // Log successful login
+            // ✅ NEW: update monitoring info ONLY
+            ActiveClientRegistry.updateUser(
+                    clientId,
+                    user.getUsername(),
+                    user.getRole()
+            );
+
             auditLogHandler.logAction(user.getUserId(), "LOGIN",
                     "Logged in from " + clientIP);
 
             logger.info("Client {} authenticated as user '{}' ({})", clientId, username, user.getRole());
             return createResponse(true, "Login successful", user);
-        } else {
+        }
+        else {
             // Track failed attempt
             if (attempt == null) {
                 attempt = new LoginAttempt();
@@ -318,7 +372,7 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Not authenticated", null);
         }
 
-        int productId = request.get("product_id").getAsInt();
+        int productId = request.get("productId").getAsInt();
         Product product = productHandler.getProductById(productId);
 
         return createResponse(product != null,
@@ -412,7 +466,7 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Only admins can delete products", null);
         }
 
-        int productId = request.get("product_id").getAsInt();
+        int productId = request.get("productId").getAsInt();
 
         boolean success = productHandler.deactivateProduct(productId);
 
@@ -463,7 +517,7 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Not authenticated", null);
         }
 
-        List<Supplier> suppliers = supplierHandler.getAllSuppliers();
+        List<Supplier> suppliers = supplierHandler.getAllSuppliers(); // active включён
         return createResponse(true, "Suppliers retrieved", suppliers);
     }
 
@@ -472,7 +526,7 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Not authenticated", null);
         }
 
-        int supplierId = request.get("supplier_id").getAsInt();
+        int supplierId = request.get("supplierId").getAsInt();
         Supplier supplier = supplierHandler.getSupplierById(supplierId);
 
         return createResponse(supplier != null,
@@ -521,17 +575,29 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Only admins can delete suppliers", null);
         }
 
-        int supplierId = request.get("supplier_id").getAsInt();
-        boolean success = supplierHandler.deleteSupplier(supplierId);
-
-        if (success) {
-            auditLogHandler.logAction(authenticatedUser.getUserId(), "DELETE_SUPPLIER",
-                    "Deleted supplier ID " + supplierId);
+        if (!request.has("supplierId")) {
+            return createResponse(false, "Supplier ID is required", null);
         }
 
-        return createResponse(success,
+        int supplierId = request.get("supplierId").getAsInt();
+        logger.info("Delete supplier request, supplierId={}", supplierId);
+
+
+        boolean success = supplierHandler.deactivateSupplier(supplierId);
+
+        if (success) {
+            auditLogHandler.logAction(
+                    authenticatedUser.getUserId(),
+                    "DELETE_SUPPLIER",
+                    "Deactivated supplier ID " + supplierId
+            );
+        }
+
+        return createResponse(
+                success,
                 success ? "Supplier deleted successfully" : "Failed to delete supplier",
-                null);
+                null
+        );
     }
 
     // ========== TRANSACTION ACTION HANDLERS ==========
@@ -638,6 +704,243 @@ public class ClientHandler implements Runnable {
         List<AuditLogHandler.AuditLogEntry> logs = auditLogHandler.getAllLogs();
         return createResponse(true, "Audit logs retrieved", logs);
     }
+    private JsonObject handleGetConnectedClients() {
+        if (!isAdmin()) {
+            return createResponse(false, "Only admins can view connected clients", null);
+        }
+
+        return createResponse(
+                true,
+                "Connected clients",
+                ActiveClientRegistry.getAll()
+        );
+    }
+    // ========== REPORT ACTION HANDLERS ========== ✅ ДОБАВИТЬ ВСЁ ЭТО
+
+    private JsonObject handleGetSalesSummary(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            ReportHandler.SalesSummary summary = reportHandler.getSalesSummary(startDate, endDate);
+
+            return createResponse(true, "Sales summary retrieved", summary);
+
+        } catch (Exception e) {
+            logger.error("Error getting sales summary", e);
+            return createResponse(false, "Invalid date format", null);
+        }
+    }
+
+    private JsonObject handleGetTodaySales() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        ReportHandler.SalesSummary summary = reportHandler.getTodaySales();
+        return createResponse(true, "Today's sales retrieved", summary);
+    }
+
+    private JsonObject handleGetWeeklySales() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        ReportHandler.SalesSummary summary = reportHandler.getWeeklySales();
+        return createResponse(true, "Weekly sales retrieved", summary);
+    }
+
+    private JsonObject handleGetMonthlySalesReport() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        ReportHandler.SalesSummary summary = reportHandler.getMonthlySales();
+        return createResponse(true, "Monthly sales retrieved", summary);
+    }
+
+    private JsonObject handleGetTopSellingProducts(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            int limit = request.has("limit") ? request.get("limit").getAsInt() : 10;
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            List<ReportHandler.TopProduct> products =
+                    reportHandler.getTopSellingProducts(limit, startDate, endDate);
+
+            return createResponse(true, "Top selling products retrieved", products);
+
+        } catch (Exception e) {
+            logger.error("Error getting top selling products", e);
+            return createResponse(false, "Invalid request data", null);
+        }
+    }
+
+    private JsonObject handleGetSalesByCategory(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            List<ReportHandler.CategorySales> categorySales =
+                    reportHandler.getSalesByCategory(startDate, endDate);
+
+            return createResponse(true, "Sales by category retrieved", categorySales);
+
+        } catch (Exception e) {
+            logger.error("Error getting sales by category", e);
+            return createResponse(false, "Invalid date format", null);
+        }
+    }
+
+    private JsonObject handleGetInventoryStatus() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        ReportHandler.InventoryStatus status = reportHandler.getInventoryStatus();
+        return createResponse(true, "Inventory status retrieved", status);
+    }
+
+    private JsonObject handleGetProductsByStockLevel() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        java.util.Map<String, List<ReportHandler.StockProduct>> stockLevels =
+                reportHandler.getProductsByStockLevel();
+
+        return createResponse(true, "Products by stock level retrieved", stockLevels);
+    }
+
+    private JsonObject handleGetTransactionStats(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            LocalDate startDate = LocalDate.parse(request.get("startDate").getAsString());
+            LocalDate endDate = LocalDate.parse(request.get("endDate").getAsString());
+
+            ReportHandler.TransactionStats stats =
+                    reportHandler.getTransactionStats(startDate, endDate);
+            logger.info("Transaction stats: {}", stats.getStats());
+            // ✅ ВАЖНО: отдаём ТОЛЬКО map
+            return createResponse(
+                    true,
+                    "Transaction statistics retrieved",
+                    stats.getStats()
+            );
+
+        } catch (Exception e) {
+            logger.error("Error getting transaction stats", e);
+            return createResponse(false, "Invalid date format", null);
+        }
+
+    }
+
+    // ========== SUPPLIER REPORT HANDLERS ========== ✅ NEW
+
+    private JsonObject handleGetSupplierPerformance(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            List<ReportHandler.SupplierPerformance> performance =
+                    reportHandler.getSupplierPerformance(startDate, endDate);
+
+            return createResponse(true, "Supplier performance retrieved", performance);
+
+        } catch (Exception e) {
+            logger.error("Error getting supplier performance", e);
+            return createResponse(false, "Invalid date format", null);
+        }
+    }
+
+    private JsonObject handleGetAllSuppliersSummary() {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        List<ReportHandler.SupplierSummary> summaries = reportHandler.getAllSuppliersSummary();
+        return createResponse(true, "Supplier summaries retrieved", summaries);
+    }
+
+// ========== USER ACTIVITY REPORT HANDLERS ==========
+
+    private JsonObject handleGetUserActivityReport(JsonObject request) {
+        if (!isAdmin()) {
+            return createResponse(false, "Only admins can view user activity reports", null);
+        }
+
+        try {
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            List<ReportHandler.UserActivity> activity =
+                    reportHandler.getUserActivityReport(startDate, endDate);
+
+            return createResponse(true, "User activity report retrieved", activity);
+
+        } catch (Exception e) {
+            logger.error("Error getting user activity report", e);
+            return createResponse(false, "Invalid date format", null);
+        }
+    }
+
+    private JsonObject handleGetMostActiveUsers(JsonObject request) {
+        if (!isAdmin()) {
+            return createResponse(false, "Only admins can view user activity", null);
+        }
+
+        try {
+            int limit = request.has("limit") ? request.get("limit").getAsInt() : 5;
+            String startDateStr = request.get("startDate").getAsString();
+            String endDateStr = request.get("endDate").getAsString();
+
+            java.time.LocalDate startDate = java.time.LocalDate.parse(startDateStr);
+            java.time.LocalDate endDate = java.time.LocalDate.parse(endDateStr);
+
+            List<ReportHandler.UserActivity> activity =
+                    reportHandler.getMostActiveUsers(limit, startDate, endDate);
+
+            return createResponse(true, "Most active users retrieved", activity);
+
+        } catch (Exception e) {
+            logger.error("Error getting most active users", e);
+            return createResponse(false, "Invalid request data", null);
+        }
+    }
 
     // ========== HELPER METHODS ==========
 
@@ -678,6 +981,7 @@ public class ClientHandler implements Runnable {
             if (clientSocket != null && !clientSocket.isClosed()) {
                 clientSocket.close();
             }
+            ActiveClientRegistry.remove(clientId);
             logger.info("Client {} disconnected", clientId);
         } catch (IOException e) {
             logger.error("Error closing client {} connection", clientId, e);

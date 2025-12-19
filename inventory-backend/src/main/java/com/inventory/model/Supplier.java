@@ -13,6 +13,7 @@ public class Supplier {
     private String email;
     private String address;
     private LocalDateTime createdAt;
+    private boolean active;
 
     // Constructors
     public Supplier() {
@@ -48,7 +49,9 @@ public class Supplier {
     public void setSupplierId(int supplierId) {
         this.supplierId = supplierId;
     }
-
+    public void setActive(boolean active) {
+        this.active = active;
+    }
     public String getName() {
         return name;
     }
