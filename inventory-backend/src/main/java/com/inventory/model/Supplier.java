@@ -14,6 +14,8 @@ public class Supplier {
     private String address;
     private LocalDateTime createdAt;
     private boolean active;
+    private int productCount;
+
 
     // Constructors
     public Supplier() {
@@ -44,6 +46,12 @@ public class Supplier {
     // Getters and Setters
     public int getSupplierId() {
         return supplierId;
+    }
+    public int getProductCount() {
+        return productCount;
+    }
+    public void setProductCount(int productCount) {
+        this.productCount = productCount;
     }
 
     public void setSupplierId(int supplierId) {

@@ -91,7 +91,24 @@ public class SupplierHandler {
      */
     public List<Supplier> getAllSuppliers() {
         List<Supplier> suppliers = new ArrayList<>();
-        String sql = "SELECT * FROM suppliers ORDER BY name";
+
+        String sql = """
+        SELECT
+            s.supplier_id,
+            s.name,
+            s.contact_info,
+            s.email,
+            s.address,
+            s.created_at,
+            s.active,
+            COUNT(p.product_id) AS product_count
+        FROM suppliers s
+        LEFT JOIN products p
+            ON p.supplier_id = s.supplier_id
+            AND p.active = true
+        GROUP BY s.supplier_id
+        ORDER BY s.name
+        """;
 
         try (
                 Connection conn = DatabaseConnection.getConnection();
@@ -101,15 +118,14 @@ public class SupplierHandler {
             while (rs.next()) {
                 suppliers.add(mapResultSetToSupplier(rs));
             }
-            logger.info(
-                    "Retrieved {} suppliers from database",
-                    suppliers.size()
-            );
+            logger.info("Retrieved {} suppliers with product count", suppliers.size());
         } catch (SQLException e) {
-            logger.error("Error fetching all suppliers", e);
+            logger.error("Error fetching suppliers", e);
         }
+
         return suppliers;
     }
+
 
     /**
      * Update supplier information
@@ -291,6 +307,11 @@ public class SupplierHandler {
                         .toLocalDateTime()
         );
         supplier.setActive(rs.getBoolean("active"));
+        try {
+            supplier.setProductCount(rs.getInt("product_count"));
+        } catch (SQLException ignored) {
+            supplier.setProductCount(0);
+        }
         return supplier;
     }
 

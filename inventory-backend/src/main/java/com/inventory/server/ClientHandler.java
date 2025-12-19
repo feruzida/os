@@ -380,39 +380,46 @@ public class ClientHandler implements Runnable {
                 product);
     }
 
-   private JsonObject handleAddProduct(JsonObject request) {
-       if (!isAdminOrManager()) {
-           return createResponse(false, "Only admins and managers can add products", null);
-       }
+    private JsonObject handleAddProduct(JsonObject request) {
+        if (!isAdminOrManager()) {
+            return createResponse(false, "Only admins and managers can add products", null);
+        }
 
-       try {
-           Product product = new Product();
-           product.setName(request.get("name").getAsString());
-           product.setCategory(request.get("category").getAsString());
-           product.setUnitPrice(request.get("unitPrice").getAsBigDecimal());
-           product.setQuantity(request.get("quantity").getAsInt());
+        try {
+            Product product = new Product();
+            product.setName(request.get("name").getAsString());
+            product.setCategory(request.get("category").getAsString());
+            product.setUnitPrice(request.get("unitPrice").getAsBigDecimal());
+            product.setQuantity(request.get("quantity").getAsInt());
 
-           boolean success = productHandler.addProduct(product);
+            if (request.has("supplierId") && !request.get("supplierId").isJsonNull()) {
+                product.setSupplierId(request.get("supplierId").getAsInt());
+            } else {
+                product.setSupplierId(null);
+            }
 
-           if (success) {
-               auditLogHandler.logAction(
-                       authenticatedUser.getUserId(),
-                       "ADD_PRODUCT",
-                       "Added product: " + product.getName()
-               );
-           }
+            boolean success = productHandler.addProduct(product);
 
-           return createResponse(
-                   success,
-                   success ? "Product added successfully" : "Failed to add product",
-                   success ? product : null
-           );
+            if (success) {
+                auditLogHandler.logAction(
+                        authenticatedUser.getUserId(),
+                        "ADD_PRODUCT",
+                        "Added product: " + product.getName()
+                );
+            }
 
-       } catch (Exception e) {
-           logger.error("Error parsing add_product request", e);
-           return createResponse(false, "Invalid product data", null);
-       }
-   }
+            return createResponse(
+                    success,
+                    success ? "Product added successfully" : "Failed to add product",
+                    success ? product : null
+            );
+
+        } catch (Exception e) {
+            logger.error("Error parsing add_product request", e);
+            return createResponse(false, "Invalid product data", null);
+        }
+    }
+
 
 
     private JsonObject handleUpdateProduct(JsonObject request) {
@@ -431,6 +438,12 @@ public class ClientHandler implements Runnable {
             product.setCategory(request.get("category").getAsString());
             product.setUnitPrice(request.get("unitPrice").getAsBigDecimal());
             product.setQuantity(request.get("quantity").getAsInt());
+
+            if (request.has("supplierId") && !request.get("supplierId").isJsonNull()) {
+                product.setSupplierId(request.get("supplierId").getAsInt());
+            } else {
+                product.setSupplierId(null);
+            }
 
             if (product.getProductId() <= 0) {
                 return createResponse(false, "Invalid product ID", null);
