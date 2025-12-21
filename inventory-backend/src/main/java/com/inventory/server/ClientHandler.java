@@ -621,7 +621,7 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Not authenticated", null);
         }
 
-        List<Supplier> suppliers = supplierHandler.getAllSuppliers(); // active включён
+        List<Supplier> suppliers = supplierHandler.getAllSuppliers();
         return createResponse(true, "Suppliers retrieved", suppliers);
     }
 
