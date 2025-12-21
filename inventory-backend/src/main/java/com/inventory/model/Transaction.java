@@ -117,6 +117,9 @@ public class Transaction {
 
 
     public BigDecimal getUnitPrice() {
+        if (totalPrice == null || quantity <= 0) {
+            return BigDecimal.ZERO;
+        }
         return totalPrice.divide(BigDecimal.valueOf(quantity), 2, java.math.RoundingMode.HALF_UP);
     }
 

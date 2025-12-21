@@ -22,7 +22,8 @@ public class TransactionHandler {
     /**
      * Record a new transaction (Sale or Purchase)
      * This method also updates product quantity automatically
-     * FIXED: Better resource management with try-with-resources
+     * Executes atomic transaction using JDBC transaction management
+     * Ensures consistency between stock update and transaction record
      * @return true if transaction recorded successfully
      */
     public boolean recordTransaction(Transaction transaction) {
@@ -61,6 +62,8 @@ public class TransactionHandler {
 
                 int updated = updateStmt.executeUpdate();
                 if (updated == 0) {
+                    logger.warn("Transaction failed: insufficient stock or invalid product (ID={})",
+                            transaction.getProductId());
                     conn.rollback();
                     return false;
                 }

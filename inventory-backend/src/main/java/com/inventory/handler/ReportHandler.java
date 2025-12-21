@@ -86,7 +86,7 @@ public class ReportHandler {
     }
 
     /**
-     * Get top selling products
+     * Get top-selling products
      */
     public List<TopProduct> getTopSellingProducts(int limit, LocalDate startDate, LocalDate endDate) {
         List<TopProduct> topProducts = new ArrayList<>();
@@ -284,7 +284,7 @@ public class ReportHandler {
             while (rs.next()) {
                 String type = rs.getString("txn_type");
 
-                // ✅ НОРМАЛИЗАЦИЯ
+                // НОРМАЛИЗАЦИЯ
                 if ("sale".equalsIgnoreCase(type)) type = "Sale";
                 else if ("purchase".equalsIgnoreCase(type)) type = "Purchase";
 
@@ -304,7 +304,7 @@ public class ReportHandler {
     }
 
 
-    // ========== SUPPLIER REPORTS ========== ✅ NEW
+    // ========== SUPPLIER REPORTS ==========
 
     /**
      * Get supplier performance report
@@ -392,7 +392,7 @@ public class ReportHandler {
         return result;
     }
 
-    // ========== USER ACTIVITY REPORTS ========== ✅ NEW
+    // ========== USER ACTIVITY REPORTS ==========
 
     /**
      * Get user activity summary from audit logs
@@ -599,7 +599,7 @@ public class ReportHandler {
         }
     }
 
-    // ========== NEW CLASSES FOR SUPPLIER & USER REPORTS ========== ✅
+    // ========== NEW CLASSES FOR SUPPLIER & USER REPORTS ==========
 
     public static class SupplierPerformance {
         private int supplierId;

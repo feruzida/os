@@ -11,8 +11,9 @@ import java.util.List;
 
 /**
  * Handler for User-related database operations (CRUD)
- * SIMPLIFIED: Removed BCrypt for educational purposes
- */
+ * Passwords are stored in plain text ONLY for educational purposes
+ * In real production systems, passwords must be hashed (e.g., BCrypt)
+ * */
 public class UserHandler {
     private static final Logger logger = LoggerFactory.getLogger(UserHandler.class);
 
@@ -251,6 +252,7 @@ public class UserHandler {
     /**
      * Change user password
      * SIMPLIFIED: No old password verification, plain text
+     * oldPassword is ignored in a simplified educational version
      */
     public boolean changePassword(int userId, String oldPassword, String newPassword) {
         if (newPassword == null || newPassword.length() < 6) {

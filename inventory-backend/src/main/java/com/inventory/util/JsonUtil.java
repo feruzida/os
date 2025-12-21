@@ -12,6 +12,7 @@ import java.time.format.DateTimeFormatter;
  * JSON utility class for serializing and deserializing objects
  * Used by Socket Server for client-server communication
  */
+
 public class JsonUtil {
     private static final Logger logger = LoggerFactory.getLogger(JsonUtil.class);
     private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -24,6 +25,7 @@ public class JsonUtil {
     /**
      * Custom TypeAdapter for LocalDateTime
      */
+
     private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
         @Override
         public JsonElement serialize(LocalDateTime dateTime, Type type, JsonSerializationContext context) {
@@ -40,6 +42,7 @@ public class JsonUtil {
     /**
      * Get the configured Gson instance
      */
+
     public static Gson getGson() {
         return gson;
     }
@@ -49,6 +52,7 @@ public class JsonUtil {
      * @param object Object to convert
      * @return JSON string representation
      */
+
     public static String toJson(Object object) {
         try {
             return gson.toJson(object);
@@ -64,6 +68,7 @@ public class JsonUtil {
      * @param classOfT Target class type
      * @return Deserialized object or null if error
      */
+
     public static <T> T fromJson(String json, Class<T> classOfT) {
         try {
             return gson.fromJson(json, classOfT);
@@ -79,6 +84,7 @@ public class JsonUtil {
      * @param typeOfT Target type
      * @return Deserialized object or null if error
      */
+
     public static <T> T fromJson(String json, Type typeOfT) {
         try {
             return gson.fromJson(json, typeOfT);
@@ -93,6 +99,7 @@ public class JsonUtil {
      * @param json String to check
      * @return true if valid JSON
      */
+
     public static boolean isValidJson(String json) {
         try {
             gson.fromJson(json, Object.class);

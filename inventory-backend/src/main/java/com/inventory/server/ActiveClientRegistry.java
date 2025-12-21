@@ -5,6 +5,12 @@ import com.inventory.model.ActiveClient;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+/**
+ * Thread-safe registry of all active socket clients.
+ * Used by the server to monitor connected users and their roles.
+ */
+
 public class ActiveClientRegistry {
 
     private static final ConcurrentHashMap<Integer, ActiveClient> clients = new ConcurrentHashMap<>();

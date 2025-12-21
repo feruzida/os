@@ -2,6 +2,12 @@ package com.inventory.model;
 
 import java.time.LocalDateTime;
 
+
+/**
+ * Represents an active client connected to the socket server
+ * Stores connection info and authenticated user details
+ */
+
 public class ActiveClient {
     private final int clientId;
     private String username;

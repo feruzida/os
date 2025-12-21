@@ -185,6 +185,7 @@ public class SupplierHandler {
 
     /**
      * Delete supplier by ID
+     * Hard delete supplier (used only for testing or cleanup)
      * @return true if deletion successful
      */
     public boolean deleteSupplier(int supplierId) {

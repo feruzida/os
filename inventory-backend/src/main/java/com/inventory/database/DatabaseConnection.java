@@ -13,13 +13,14 @@ import java.util.Properties;
 
 /**
  * Database Connection Manager using HikariCP Connection Pool
- * FIXED: Added better error handling and connection validation
  */
 public class DatabaseConnection {
     private static final Logger logger = LoggerFactory.getLogger(DatabaseConnection.class);
     private static HikariDataSource dataSource;
 
     static {
+        // Initialize connection pool once at server startup
+
         try {
             initializeDataSource();
         } catch (Exception e) {

@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Multi-threaded Socket Server for Inventory Management System
+ * Multithreaded Socket Server for Inventory Management System
  * Handles multiple client connections concurrently
  */
 public class SocketServer {
@@ -109,7 +109,7 @@ public class SocketServer {
     }
 
     /**
-     * Get number of active clients
+     * Get a number of active clients
      */
     public int getActiveClients() {
         return clientCounter.get();
@@ -121,7 +121,7 @@ public class SocketServer {
     public static void main(String[] args) {
         SocketServer server = new SocketServer();
 
-        // Add shutdown hook
+        // Add a shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("Shutdown signal received");
             server.stop();

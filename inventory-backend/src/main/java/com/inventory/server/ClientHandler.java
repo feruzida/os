@@ -23,15 +23,16 @@ import com.inventory.model.ActiveClient;
 import com.inventory.server.ActiveClientRegistry;
 
 /**
- * Handles individual client connections in separate threads
- * Processes JSON requests and returns JSON responses
- * FIXED: Added socket timeout, rate limiting, and better error handling
+ * ClientHandler handles a single socket connection.
+ * Each client is processed in its own thread.
+ * Communication protocol is JSON-based.
  */
+
 public class ClientHandler implements Runnable {
     private static final Logger logger = LoggerFactory.getLogger(ClientHandler.class);
     private final Gson gson = JsonUtil.getGson();
 
-    // FIXED: Rate limiting for login attempts
+    //Rate limiting for login attempts
     private static final ConcurrentHashMap<String, LoginAttempt> loginAttempts = new ConcurrentHashMap<>();
     private static final int MAX_LOGIN_ATTEMPTS = 5;
     private static final int LOCKOUT_MINUTES = 5;
@@ -58,7 +59,7 @@ public class ClientHandler implements Runnable {
         this.clientSocket = socket;
         this.clientId = clientId;
 
-        // FIXED: Set socket timeout and keep-alive
+        // Set socket timeout and keep-alive
         try {
             socket.setSoTimeout(SOCKET_TIMEOUT);
             socket.setKeepAlive(true);
@@ -88,7 +89,7 @@ public class ClientHandler implements Runnable {
                     clientSocket.getInetAddress().getHostAddress(),
                     clientSocket.getPort());
 
-            // ✅ NEW: register connected socket (NO AUTH LOGIC)
+            // register a connected socket (NO AUTH LOGIC)
             ActiveClientRegistry.add(
                     new ActiveClient(
                             clientId,
@@ -98,7 +99,7 @@ public class ClientHandler implements Runnable {
                     )
             );
 
-            // Send welcome message
+            // Send a welcome message
             sendResponse(createResponse(true, "Connected to Inventory Server", null));
 
 
@@ -129,7 +130,7 @@ public class ClientHandler implements Runnable {
 
     /**
      * Process client request based on action
-     * FIXED: Added authentication check and better error handling
+     * Added authentication check and better error handling
      */
     private JsonObject processRequest(String action, JsonObject request) {
         try {
@@ -150,6 +151,9 @@ public class ClientHandler implements Runnable {
                     return handleGetAllUsers();
                 case "change_password":
                     return handleChangePassword(request);
+                // ========== PRODUCT ACTIONS ==========
+                case "get_products_by_supplier":
+                    return handleGetProductsBySupplier(request);
 
                 // ========== PRODUCT ACTIONS ==========
                 case "get_all_products":
@@ -186,6 +190,8 @@ public class ClientHandler implements Runnable {
                     return handleGetAllTransactions();
                 case "get_today_transactions":
                     return handleGetTodayTransactions();
+                case "get_transactions_by_date_range":
+                    return handleGetTransactionsByDateRange(request);
                 case "get_daily_sales":
                     return handleGetDailySales(request);
                 case "get_monthly_sales":
@@ -236,7 +242,7 @@ public class ClientHandler implements Runnable {
     }
 
     /**
-     * FIXED: Check if action requires authentication
+     * Check if an action requires authentication
      */
     private boolean requiresAuth(String action) {
         return !List.of("login", "logout").contains(action);
@@ -246,7 +252,7 @@ public class ClientHandler implements Runnable {
     // ========== USER ACTION HANDLERS ==========
 
     /**
-     * FIXED: Added rate limiting for login attempts
+     * Added rate limiting for login attempts
      */
     private JsonObject handleLogin(JsonObject request) {
         String username = request.get("username").getAsString();
@@ -256,6 +262,7 @@ public class ClientHandler implements Runnable {
 
         // Check rate limiting
         LoginAttempt attempt = loginAttempts.get(key);
+        // Rate limiting temporarily disabled for testing/demo purposes
         //if (attempt != null && attempt.isLocked()) {
         //    return createResponse(false,
         //            "Too many login attempts. Try again in " + attempt.getRemainingLockoutMinutes() + " minutes.",
@@ -268,7 +275,7 @@ public class ClientHandler implements Runnable {
             loginAttempts.remove(key);
             authenticatedUser = user;
 
-            // ✅ NEW: update monitoring info ONLY
+            // update monitoring info ONLY
             ActiveClientRegistry.updateUser(
                     clientId,
                     user.getUsername(),
@@ -294,6 +301,46 @@ public class ClientHandler implements Runnable {
         }
     }
 
+    private JsonObject handleGetTransactionsByDateRange(JsonObject request) {
+
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        try {
+            LocalDate startDate =
+                    LocalDate.parse(request.get("startDate").getAsString());
+            LocalDate endDate =
+                    LocalDate.parse(request.get("endDate").getAsString());
+
+            // inclusive range
+            LocalDateTime from = startDate.atStartOfDay();
+            LocalDateTime to = endDate.plusDays(1).atStartOfDay();
+
+            List<Transaction> transactions =
+                    transactionHandler.getTransactionsByDateRange(from, to);
+
+            return createResponse(
+                    true,
+                    "Transactions retrieved for date range",
+                    transactions
+            );
+
+        } catch (Exception e) {
+            logger.error("Date range transaction error", e);
+            return createResponse(false, "Invalid date range", null);
+        }
+    }
+
+    /**
+     * Admin-only user registration.
+     *
+     * NOTE:
+     * Currently not used by the frontend because the system
+     * operates with a fixed set of predefined roles
+     * (Admin, Stock Manager, Cashier).
+     * Intended for a future Admin user management UI.
+     */
     private JsonObject handleRegister(JsonObject request) {
         if (!isAdmin()) {
             return createResponse(false, "Only admins can register new users", null);
@@ -312,6 +359,36 @@ public class ClientHandler implements Runnable {
                 success ? newUser : null);
     }
 
+    /**
+     * Returns all active products for a given supplier.
+     * Requires an authenticated user and valid supplier ID.
+     */
+
+    private JsonObject handleGetProductsBySupplier(JsonObject request) {
+        if (!isAuthenticated()) {
+            return createResponse(false, "Not authenticated", null);
+        }
+
+        if (!request.has("supplierId")) {
+            return createResponse(false, "Supplier ID is required", null);
+        }
+
+        int supplierId = request.get("supplierId").getAsInt();
+
+        if (supplierId <= 0) {
+            return createResponse(false, "Invalid supplier ID", null);
+        }
+
+        List<Product> products =
+                productHandler.getProductsBySupplier(supplierId);
+
+        return createResponse(
+                true,
+                "Products by supplier retrieved",
+                products
+        );
+    }
+
     private JsonObject handleLogout() {
         if (authenticatedUser != null) {
             auditLogHandler.logAction(authenticatedUser.getUserId(), "LOGOUT",
@@ -323,6 +400,11 @@ public class ClientHandler implements Runnable {
         return createResponse(true, "Logged out successfully", null);
     }
 
+    /**
+     * Returns a list of all registered users.
+     * Requires authenticated access.
+     */
+
     private JsonObject handleGetAllUsers() {
         if (!isAuthenticated()) {
             return createResponse(false, "Not authenticated", null);
@@ -333,8 +415,10 @@ public class ClientHandler implements Runnable {
     }
 
     /**
-     * FIXED: New handler for password change
+     * New handler for password change
+     * Not used now in Front
      */
+
     private JsonObject handleChangePassword(JsonObject request) {
         if (!isAuthenticated()) {
             return createResponse(false, "Not authenticated", null);
@@ -380,6 +464,11 @@ public class ClientHandler implements Runnable {
                 product);
     }
 
+    /**
+     * Creates a new product in inventory.
+     * Accessible only to Admin and Stock Manager roles.
+     */
+
     private JsonObject handleAddProduct(JsonObject request) {
         if (!isAdminOrManager()) {
             return createResponse(false, "Only admins and managers can add products", null);
@@ -420,13 +509,15 @@ public class ClientHandler implements Runnable {
         }
     }
 
-
+    /**
+     * Updates an existing product.
+     * Requires Admin or Stock Manager privileges.
+     */
 
     private JsonObject handleUpdateProduct(JsonObject request) {
         if (!isAdminOrManager()) {
             return createResponse(false, "Only admins and managers can update products", null);
         }
-
         try {
             if (!request.has("productId")) {
                 return createResponse(false, "Product ID is required", null);
@@ -471,7 +562,10 @@ public class ClientHandler implements Runnable {
         }
     }
 
-
+    /**
+     * Deactivates a product (soft delete).
+     * Accessible only to an Admin role.
+     */
 
     private JsonObject handleDeleteProduct(JsonObject request) {
 
@@ -497,9 +591,6 @@ public class ClientHandler implements Runnable {
                 null
         );
     }
-
-
-
 
     private JsonObject handleSearchProducts(JsonObject request) {
         if (!isAuthenticated()) {
@@ -583,6 +674,11 @@ public class ClientHandler implements Runnable {
                 null);
     }
 
+    /**
+     * Deactivates a supplier (soft delete).
+     * Accessible only to an Admin role.
+     */
+
     private JsonObject handleDeleteSupplier(JsonObject request) {
         if (!isAdmin()) {
             return createResponse(false, "Only admins can delete suppliers", null);
@@ -594,7 +690,6 @@ public class ClientHandler implements Runnable {
 
         int supplierId = request.get("supplierId").getAsInt();
         logger.info("Delete supplier request, supplierId={}", supplierId);
-
 
         boolean success = supplierHandler.deactivateSupplier(supplierId);
 
@@ -615,6 +710,11 @@ public class ClientHandler implements Runnable {
 
     // ========== TRANSACTION ACTION HANDLERS ==========
 
+    /**
+     * Records a sale or purchase transaction.
+     * Updates product stock atomically and logs the operation.
+     */
+
     private JsonObject handleRecordTransaction(JsonObject request) {
         if (!isAuthenticated()) {
             return createResponse(false, "Authentication required", null);
@@ -632,8 +732,6 @@ public class ClientHandler implements Runnable {
             transaction.setQuantity(tx.get("quantity").getAsInt());
             transaction.setTxnType(tx.get("txnType").getAsString());
             transaction.setNotes(tx.has("notes") ? tx.get("notes").getAsString() : null);
-
-            // userId ВСЕГДА берём с сервера
             transaction.setUserId(authenticatedUser.getUserId());
 
             boolean success = transactionHandler.recordTransaction(transaction);
@@ -656,14 +754,11 @@ public class ClientHandler implements Runnable {
                     success ? "Transaction recorded successfully" : "Failed to record transaction",
                     updatedProduct
             );
-
-
         } catch (Exception e) {
             logger.error("Error parsing record_transaction request", e);
             return createResponse(false, "Invalid transaction data", null);
         }
     }
-
 
     private JsonObject handleGetAllTransactions() {
         if (!isAuthenticated()) {
@@ -709,6 +804,11 @@ public class ClientHandler implements Runnable {
 
     // ========== AUDIT LOG HANDLERS ==========
 
+    /**
+     * Returns audit log entries.
+     * Accessible only to Admin role.
+     */
+
     private JsonObject handleGetAuditLogs() {
         if (!isAdmin()) {
             return createResponse(false, "Only admins can view audit logs", null);
@@ -717,6 +817,12 @@ public class ClientHandler implements Runnable {
         List<AuditLogHandler.AuditLogEntry> logs = auditLogHandler.getAllLogs();
         return createResponse(true, "Audit logs retrieved", logs);
     }
+
+    /**
+     * Returns a list of currently connected socket clients.
+     * Used for server monitoring. Admin access only.
+     */
+
     private JsonObject handleGetConnectedClients() {
         if (!isAdmin()) {
             return createResponse(false, "Only admins can view connected clients", null);
@@ -728,7 +834,11 @@ public class ClientHandler implements Runnable {
                 ActiveClientRegistry.getAll()
         );
     }
-    // ========== REPORT ACTION HANDLERS ========== ✅ ДОБАВИТЬ ВСЁ ЭТО
+    // ========== REPORT ACTION HANDLERS ==========
+
+    /**
+     * Returns aggregated sales summary for a given date range.
+     */
 
     private JsonObject handleGetSalesSummary(JsonObject request) {
         if (!isAuthenticated()) {
@@ -778,6 +888,11 @@ public class ClientHandler implements Runnable {
         ReportHandler.SalesSummary summary = reportHandler.getMonthlySales();
         return createResponse(true, "Monthly sales retrieved", summary);
     }
+
+    /**
+     * Returns top-selling products for a given period.
+     * Supports optional result limit.
+     */
 
     private JsonObject handleGetTopSellingProducts(JsonObject request) {
         if (!isAuthenticated()) {
@@ -846,6 +961,10 @@ public class ClientHandler implements Runnable {
         return createResponse(true, "Products by stock level retrieved", stockLevels);
     }
 
+    /**
+     * Returns aggregated transaction statistics grouped by transaction type.
+     */
+
     private JsonObject handleGetTransactionStats(JsonObject request) {
         if (!isAuthenticated()) {
             return createResponse(false, "Not authenticated", null);
@@ -858,7 +977,7 @@ public class ClientHandler implements Runnable {
             ReportHandler.TransactionStats stats =
                     reportHandler.getTransactionStats(startDate, endDate);
             logger.info("Transaction stats: {}", stats.getStats());
-            // ✅ ВАЖНО: отдаём ТОЛЬКО map
+
             return createResponse(
                     true,
                     "Transaction statistics retrieved",
@@ -872,7 +991,11 @@ public class ClientHandler implements Runnable {
 
     }
 
-    // ========== SUPPLIER REPORT HANDLERS ========== ✅ NEW
+    // ========== SUPPLIER REPORT HANDLERS ==========
+
+    /**
+     * Returns supplier performance statistics for a given date range.
+     */
 
     private JsonObject handleGetSupplierPerformance(JsonObject request) {
         if (!isAuthenticated()) {
@@ -906,7 +1029,12 @@ public class ClientHandler implements Runnable {
         return createResponse(true, "Supplier summaries retrieved", summaries);
     }
 
-// ========== USER ACTIVITY REPORT HANDLERS ==========
+    // ========== USER ACTIVITY REPORT HANDLERS ==========
+
+    /**
+     * Returns aggregated user activity data for a given date range.
+     * Accessible only to Admin role.
+     */
 
     private JsonObject handleGetUserActivityReport(JsonObject request) {
         if (!isAdmin()) {
@@ -930,6 +1058,11 @@ public class ClientHandler implements Runnable {
             return createResponse(false, "Invalid date format", null);
         }
     }
+
+    /**
+     * Returns the most active users within a given period.
+     * Results are limited by the specified limit parameter.
+     */
 
     private JsonObject handleGetMostActiveUsers(JsonObject request) {
         if (!isAdmin()) {
@@ -956,6 +1089,10 @@ public class ClientHandler implements Runnable {
     }
 
     // ========== HELPER METHODS ==========
+
+    /**
+     * Creates a standard JSON response with status, message, timestamp and optional data.
+     */
 
     private JsonObject createResponse(boolean success, String message, Object data) {
         JsonObject response = new JsonObject();
@@ -987,6 +1124,10 @@ public class ClientHandler implements Runnable {
                 (authenticatedUser.isAdmin() || authenticatedUser.isStockManager());
     }
 
+    /**
+     * Closes the client connection and removes it from the active client registry.
+     */
+
     private void disconnect() {
         try {
             if (in != null) in.close();
@@ -1002,7 +1143,8 @@ public class ClientHandler implements Runnable {
     }
 
     /**
-     * FIXED: Inner class for tracking login attempts
+     * Inner class for tracking login attempts
+     * Lockout logic is implemented but currently disabled.
      */
     private static class LoginAttempt {
         private int attempts = 0;

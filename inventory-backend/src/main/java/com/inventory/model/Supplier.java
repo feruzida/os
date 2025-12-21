@@ -14,8 +14,7 @@ public class Supplier {
     private String address;
     private LocalDateTime createdAt;
     private boolean active;
-    private int productCount;
-
+    private int productCount; // Derived field, not stored in database
 
     // Constructors
     public Supplier() {
