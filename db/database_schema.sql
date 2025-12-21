@@ -3,7 +3,7 @@
 -- SOFT DELETE ENABLED (active = true/false)
 -- =================================================================
 
--- Drop existing tables (в правильном порядке)
+-- Drop existing tables
 DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
