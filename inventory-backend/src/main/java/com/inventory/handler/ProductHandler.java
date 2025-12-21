@@ -12,8 +12,9 @@ import java.util.List;
 
 /**
  * Handler for Product-related database operations (CRUD)
- * FIXED: Added comprehensive validation
+ * Added comprehensive validation
  */
+
 public class ProductHandler {
     private static final Logger logger = LoggerFactory.getLogger(ProductHandler.class);
 
@@ -35,9 +36,10 @@ public class ProductHandler {
 
     /**
      * Add a new product to inventory
-     * FIXED: Added validation before insert
+     * Added validation before insert
      * @return true if product added successfully
      */
+
     public boolean addProduct(Product product) {
     if (product == null) {
             logger.error("Product is null in addProduct()");
@@ -100,6 +102,7 @@ public class ProductHandler {
      * Get product by ID
      * @return Product object or null if not found
      */
+
     public Product getProductById(int productId) {
         if (productId <= 0) {
             logger.error("Invalid product ID: {}", productId);
@@ -184,6 +187,7 @@ public class ProductHandler {
      * Get products by supplier
      * @return List of products from the supplier
      */
+
     public List<Product> getProductsBySupplier(int supplierId) {
         if (supplierId <= 0) {
             logger.error("Invalid supplier ID: {}", supplierId);
@@ -216,6 +220,7 @@ public class ProductHandler {
      * Get low stock products (quantity <= threshold)
      * @return List of products with low stock
      */
+
     public List<Product> getLowStockProducts(int threshold) {
         if (threshold < 0) {
             logger.error("Threshold cannot be negative");
@@ -246,7 +251,7 @@ public class ProductHandler {
 
     /**
      * Update product information
-     * FIXED: Added validation
+     * Added validation
      * @return true if update successful
      */
     public boolean updateProduct(Product product) {
@@ -308,9 +313,10 @@ public class ProductHandler {
 
     /**
      * Update product quantity (for stock adjustments)
-     * FIXED: Added validation
+     * Added validation
      * @return true if update successful
      */
+
     public boolean updateProductQuantity(int productId, int newQuantity) {
         if (productId <= 0) {
             logger.error("Invalid product ID");
@@ -345,9 +351,10 @@ public class ProductHandler {
     }
 
     /**
-     * Delete product by ID
-     * @return true if deletion successful
+     * Delete product by ID soft.
+     * @return true if deletion successful.
      */
+
     public boolean deactivateProduct(int productId) {
         if (productId <= 0) return false;
 
@@ -365,12 +372,11 @@ public class ProductHandler {
         }
     }
 
-
-
     /**
      * Search products by name (partial match)
      * @return List of matching products
      */
+
     public List<Product> searchProductsByName(String searchTerm) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             logger.warn("Search term is empty, returning all products");
@@ -400,8 +406,9 @@ public class ProductHandler {
     }
 
     /**
-     * Map ResultSet to Product object
+     * Map ResultSet to a Product object
      */
+
     private Product mapResultSetToProduct(ResultSet rs) throws SQLException {
         Integer supplierId = rs.getInt("supplier_id");
         if (rs.wasNull()) {
@@ -418,7 +425,6 @@ public class ProductHandler {
                 rs.getTimestamp("last_updated").toLocalDateTime()
         );
 
-        // ✅ Добавляем поле active
         product.setActive(rs.getBoolean("active"));
 
         return product;
