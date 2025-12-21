@@ -284,7 +284,6 @@ public class ReportHandler {
             while (rs.next()) {
                 String type = rs.getString("txn_type");
 
-                // НОРМАЛИЗАЦИЯ
                 if ("sale".equalsIgnoreCase(type)) type = "Sale";
                 else if ("purchase".equalsIgnoreCase(type)) type = "Purchase";
 
