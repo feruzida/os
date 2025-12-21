@@ -14,8 +14,8 @@ import java.util.List;
 
 /**
  * Handler for Transaction-related database operations (CRUD)
- * FIXED: Improved resource management and validation
  */
+
 public class TransactionHandler {
     private static final Logger logger = LoggerFactory.getLogger(TransactionHandler.class);
 
@@ -94,12 +94,11 @@ public class TransactionHandler {
         }
     }
 
-
-
     /**
      * Get transaction by ID
      * @return Transaction object or null if not found
      */
+
     public Transaction getTransactionById(int txnId) {
         if (txnId <= 0) {
             logger.error("Invalid transaction ID");
@@ -129,6 +128,7 @@ public class TransactionHandler {
      * Get all transactions
      * @return List of all transactions
      */
+
     public List<Transaction> getAllTransactions() {
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions ORDER BY txn_date DESC LIMIT 1000";
@@ -154,6 +154,7 @@ public class TransactionHandler {
      * Get transactions by type (Sale or Purchase)
      * @return List of transactions of the specified type
      */
+
     public List<Transaction> getTransactionsByType(String txnType) {
         if (!"Sale".equalsIgnoreCase(txnType) && !"Purchase".equalsIgnoreCase(txnType)) {
             logger.error("Invalid transaction type: {}", txnType);
@@ -186,6 +187,7 @@ public class TransactionHandler {
      * Get transactions by date range
      * @return List of transactions within the date range
      */
+
     public List<Transaction> getTransactionsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate == null || endDate == null) {
             logger.error("Date range cannot be null");
@@ -224,6 +226,7 @@ public class TransactionHandler {
      * Get transactions for a specific product
      * @return List of transactions for the product
      */
+
     public List<Transaction> getTransactionsByProduct(int productId) {
         if (productId <= 0) {
             logger.error("Invalid product ID");
@@ -256,6 +259,7 @@ public class TransactionHandler {
      * Get today's transactions
      * @return List of today's transactions
      */
+
     public List<Transaction> getTodayTransactions() {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = startOfDay.plusDays(1);
@@ -263,9 +267,10 @@ public class TransactionHandler {
     }
 
     /**
-     * Get daily sales report
+     * Get a daily sales report
      * @return Total sales amount for the specified date
      */
+
     public BigDecimal getDailySales(LocalDate date) {
         if (date == null) {
             logger.error("Date cannot be null");
@@ -293,9 +298,10 @@ public class TransactionHandler {
     }
 
     /**
-     * Get monthly sales report
+     * Get a monthly sales report
      * @return Total sales amount for the specified month
      */
+
     public BigDecimal getMonthlySales(int year, int month) {
         if (year < 2000 || year > 2100 || month < 1 || month > 12) {
             logger.error("Invalid year or month");
@@ -324,8 +330,9 @@ public class TransactionHandler {
     }
 
     /**
-     * Map ResultSet to Transaction object
+     * Map ResultSet to a Transaction object
      */
+
     private Transaction mapResultSetToTransaction(ResultSet rs) throws SQLException {
         return new Transaction(
                 rs.getInt("txn_id"),
@@ -338,6 +345,7 @@ public class TransactionHandler {
                 rs.getString("notes")
         );
     }
+
     private BigDecimal getProductPrice(Connection conn, int productId) throws SQLException {
         String sql = "SELECT unit_price FROM products WHERE product_id = ?";
 

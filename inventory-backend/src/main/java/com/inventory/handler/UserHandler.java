@@ -14,6 +14,7 @@ import java.util.List;
  * Passwords are stored in plain text ONLY for educational purposes
  * In real production systems, passwords must be hashed (e.g., BCrypt)
  * */
+
 public class UserHandler {
     private static final Logger logger = LoggerFactory.getLogger(UserHandler.class);
 
@@ -22,7 +23,6 @@ public class UserHandler {
      * SIMPLIFIED: Direct password comparison (no hashing)
      */
     public User loginUser(String username, String password) {
-        // Validation
         if (username == null || username.trim().isEmpty()) {
             logger.warn("Login attempt with empty username");
             return null;
@@ -75,7 +75,7 @@ public class UserHandler {
             return false;
         }
 
-        // Check if username already exists
+        // Check if a username already exists
         if (usernameExists(user.getUsername())) {
             logger.error("Username '{}' already exists", user.getUsername());
             return false;
@@ -254,6 +254,7 @@ public class UserHandler {
      * SIMPLIFIED: No old password verification, plain text
      * oldPassword is ignored in a simplified educational version
      */
+
     public boolean changePassword(int userId, String oldPassword, String newPassword) {
         if (newPassword == null || newPassword.length() < 6) {
             logger.error("New password must be at least 6 characters");
