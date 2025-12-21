@@ -12,20 +12,20 @@ import java.util.List;
 /**
  * Handler for Audit Log operations
  * Tracks all user actions in the system
- * FIXED: SQL injection prevention in clearOldLogs
  */
+
 public class AuditLogHandler {
     private static final Logger logger = LoggerFactory.getLogger(AuditLogHandler.class);
 
     /**
-     * Log a user action to audit_log table
+     * Log a user action to the audit_log table
      * @param userId User who performed the action
      * @param action Action description (e.g., "LOGIN", "ADD_PRODUCT", "DELETE_USER")
      * @param details Additional details about the action
      * @return true if logged successfully
      */
+
     public boolean logAction(int userId, String action, String details) {
-        // Validation
         if (userId <= 0) {
             logger.error("Invalid user ID");
             return false;
@@ -61,6 +61,7 @@ public class AuditLogHandler {
     /**
      * Log action without details
      */
+
     public boolean logAction(int userId, String action) {
         return logAction(userId, action, null);
     }
@@ -69,6 +70,7 @@ public class AuditLogHandler {
      * Get all audit logs (Admin only)
      * @return List of audit log entries
      */
+
     public List<AuditLogEntry> getAllLogs() {
         List<AuditLogEntry> logs = new ArrayList<>();
         String sql = "SELECT al.*, u.username FROM audit_log al " +
@@ -183,7 +185,6 @@ public class AuditLogHandler {
 
     /**
      * Clear old logs (older than specified days)
-     * FIXED: SQL injection prevention using PreparedStatement
      */
     public int clearOldLogs(int daysToKeep) {
         if (daysToKeep < 1) {
@@ -191,7 +192,6 @@ public class AuditLogHandler {
             return 0;
         }
 
-        // FIXED: Use proper PostgreSQL interval syntax with PreparedStatement
         String sql = "DELETE FROM audit_log WHERE timestamp < NOW() - INTERVAL '1 day' * ?";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -212,6 +212,7 @@ public class AuditLogHandler {
     /**
      * Inner class for Audit Log Entry
      */
+
     public static class AuditLogEntry {
         private int logId;
         private int userId;

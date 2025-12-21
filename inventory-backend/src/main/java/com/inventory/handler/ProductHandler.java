@@ -12,9 +12,9 @@ import java.util.List;
 
 /**
  * Handler for Product-related database operations (CRUD)
- * Added comprehensive validation
+ * Checks if a product has any related transactions.
+ * Used to prevent deletion of products with history.
  */
-
 public class ProductHandler {
     private static final Logger logger = LoggerFactory.getLogger(ProductHandler.class);
 
@@ -30,12 +30,12 @@ public class ProductHandler {
 
         } catch (SQLException e) {
             logger.error("Error checking transactions for product {}", productId, e);
-            return true; // безопаснее запретить удаление
+            return true;
         }
     }
 
     /**
-     * Add a new product to inventory
+     * Add a new product to the inventory
      * Added validation before insert
      * @return true if product added successfully
      */
@@ -45,7 +45,6 @@ public class ProductHandler {
             logger.error("Product is null in addProduct()");
             return false;
         }
-        // Validation
         if (product.getName() == null || product.getName().trim().isEmpty()) {
             logger.error("Product name cannot be empty");
             return false;
@@ -155,6 +154,7 @@ public class ProductHandler {
      * Get products by category
      * @return List of products in the category
      */
+
     public List<Product> getProductsByCategory(String category) {
         if (category == null || category.trim().isEmpty()) {
             logger.error("Category cannot be empty");
@@ -260,7 +260,6 @@ public class ProductHandler {
             return false;
         }
 
-        // Validation
         if (product.getProductId() <= 0) {
             logger.error("Invalid product ID");
             return false;
