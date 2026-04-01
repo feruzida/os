@@ -22,7 +22,6 @@ app.whenReady().then(createWindow);
 ipcMain.on('connect-server', () => {
   socket = new net.Socket();
   socket.connect(8080, '127.0.0.1');
-
   socket.on('data', (data) => {
     win.webContents.send('server-response', data.toString());
   });

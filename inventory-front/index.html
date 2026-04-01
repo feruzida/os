@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Management System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ================= LOGIN SECTION ================= -->
+<div id="loginSection" class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <svg class="login-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+      </svg>
+      <h2>Inventory System</h2>
+      <p class="login-subtitle">Sign in to continue</p>
+    </div>
+
+    <div class="login-form">
+      <div class="form-group">
+        <label for="user">Username</label>
+        <input type="text" id="user" placeholder="Enter your username" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="pass">Password</label>
+        <input type="password" id="pass" placeholder="Enter your password" autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary btn-block" onclick="login()">
+        <span>Sign In</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </button>
+
+      <div id="errorBox" class="error-message"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP SECTION ================= -->
+<div id="appSection" class="app-wrapper" style="display:none">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-content">
+      <div class="header-left">
+        <div class="header-left">
+          <svg class="header-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          </svg>
+
+          <nav class="nav-menu">
+            <a href="#" class="nav-item active" data-page="dashboard">Dashboard</a>
+            <a href="#" class="nav-item" data-page="inventory">Inventory</a>
+            <a href="#" class="nav-item" data-page="suppliers">Suppliers</a>
+            <a href="#" class="nav-item" data-page="transactions">Transactions</a>
+            <a href="#" class="nav-item" data-page="reports">Reports</a>
+            <a href="#" class="nav-item nav-item-admin" data-page="monitoring">
+              Monitoring
+              <span class="admin-badge">Admin</span>
+            </a>
+          </nav>
+        </div>
+      </div>
+      <div class="header-right">
+        <span id="roleLabel" class="user-badge"></span>
+        <button class="btn btn-outline" id="logoutBtn" onclick="logout()">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <!-- 📊 DASHBOARD PAGE -->
+    <div id="dashboardPage" class="page-content">
+      <!-- Overview Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Total Items</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+          </div>
+          <div class="stat-value" id="totalItems">0</div>
+          <p class="stat-description" id="totalProducts">Across 0 products</p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Total Value</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="stat-value" id="totalValue">0</div>
+          <p class="stat-description">Current inventory value</p>
+        </div>
+
+        <div class="stat-card stat-card-warning">
+          <div class="stat-header">
+            <span class="stat-title">Low Stock Items</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div class="stat-value text-destructive" id="lowStock">0</div>
+          <p class="stat-description">Need restocking</p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Categories</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="stat-value" id="categories">0</div>
+          <p class="stat-description">Product categories</p>
+        </div>
+      </div>
+
+      <!-- Low Stock Alert Section -->
+      <div id="lowStockSection" class="dashboard-section" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">
+                <svg class="icon text-destructive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                  <line x1="12" y1="9" x2="12" y2="13"></line>
+                  <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                Products Requiring Attention
+              </h3>
+              <p class="card-description" id="lowStockCount">0 products need restocking</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="lowStockList" class="low-stock-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Column Layout -->
+      <div class="dashboard-grid">
+        <!-- Recent Activity -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                Recent Activity
+              </h3>
+              <p class="card-description">Latest transactions</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="recentActivityList" class="activity-list">
+              <p class="text-muted">No recent activity</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Today's Summary -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Today's Summary
+              </h3>
+              <p class="card-description" id="todayDate">December 19, 2024</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div class="summary-stats">
+              <div class="summary-item">
+                <div class="summary-label">
+                  <svg class="icon-sm text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                  </svg>
+                  Sales Today
+                </div>
+                <div class="summary-value" id="todaySalesCount">0</div>
+                <div class="summary-amount" id="todaySalesAmount">0</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">
+                  <svg class="icon-sm text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  </svg>
+                  Purchases Today
+                </div>
+                <div class="summary-value" id="todayPurchasesCount">0</div>
+                <div class="summary-amount" id="todayPurchasesAmount">0</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+                    <polyline points="17 6 23 6 23 12"></polyline>
+                  </svg>
+                  Net Change
+                </div>
+                <div class="summary-value" id="todayNetCount">0</div>
+                <div class="summary-amount" id="todayNetAmount">0</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Column Layout -->
+      <div class="dashboard-grid">
+        <!-- Category Distribution -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                Category Distribution
+              </h3>
+              <p class="card-description">Items by category</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="categoryDistribution" class="category-distribution">
+              <p class="text-muted">No categories available</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Products -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="9 11 12 8 15 11"></polyline>
+                  <polyline points="12 8 12 22"></polyline>
+                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+                </svg>
+                Top 5 Products This Month
+              </h3>
+              <p class="card-description">Most sold items</p>
+            </div>
+          </div>
+          <div class="card-content">
+            <div id="topProductsList" class="top-products-list">
+              <p class="text-muted">No sales data available</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 📦 INVENTORY PAGE-->
+    <div id="inventoryPage" class="page-content hidden">
+      <!-- Statistics Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Total Items</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            </svg>
+          </div>
+          <div class="stat-value" id="totalItems2">0</div>
+          <p class="stat-description" id="totalProducts2">Across 0 products</p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Total Value</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="1" x2="12" y2="23"></line>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+          <div class="stat-value" id="totalValue2">0</div>
+          <p class="stat-description">Current inventory value</p>
+        </div>
+
+        <div class="stat-card stat-card-warning">
+          <div class="stat-header">
+            <span class="stat-title">Low Stock Items</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+          </div>
+          <div class="stat-value text-destructive" id="lowStock2">0</div>
+          <p class="stat-description">Need restocking</p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-title">Categories</span>
+            <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div class="stat-value" id="categories2">0</div>
+          <p class="stat-description">Product categories</p>
+        </div>
+      </div>
+
+      <!-- Inventory Table Card -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title" id="inventoryTitle">Inventory Items</h2>
+          <div class="card-actions">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                      type="text"
+                      id="productSearch"
+                      placeholder="Search products..."
+                      class="search-input"
+                      oninput="searchProducts()"
+              >
+            </div>
+            <select id="categoryFilter" class="select-input" onchange="applyCategoryFilter()">
+              <option value="ALL">All Categories</option>
+            </select>
+            <button class="btn btn-outline" onclick="clearSupplierFilter()" style="display: none;" id="clearSupplierFilterBtn">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Clear Filter
+            </button>
+            <button class="btn btn-outline" onclick="refreshInventory()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+            <button id="addProductBtn" class="btn btn-primary">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add New Item
+            </button>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <colgroup>
+                <col style="width: 60px">
+                <col style="width: 260px">
+                <col style="width: 160px">
+                <col style="width: 140px">
+                <col style="width: 120px">
+                <col style="width: 140px">
+                <col style="width: 90px">
+                <col style="width: 110px">
+                <col style="width: 90px">
+              </colgroup>
+              <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Supplier</th>
+                <th>Status</th>
+                <th class="text-center">Sale</th>
+                <th class="text-center">Purchase</th>
+                <th class="text-center">Delete</th>
+              </tr>
+              </thead>
+              <tbody id="productsTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <div id="emptyState" class="empty-state" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <div class="empty-state-text">No items found</div>
+              <p class="empty-state-description">Add your first product to get started</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 🏢 SUPPLIERS PAGE  -->
+    <div id="suppliersPage" class="page-content hidden">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Suppliers</h2>
+          <div class="card-actions">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                      type="text"
+                      id="supplierSearch"
+                      placeholder="Search suppliers..."
+                      class="search-input"
+                      oninput="searchSuppliers()"
+              >
+            </div>
+            <button class="btn btn-outline" onclick="loadSuppliers()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+            <button class="btn btn-primary" onclick="openSupplierModal()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              Add Supplier
+            </button>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>ID</th>
+                <th>Supplier Name</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Address</th>
+                <th class="text-center">Products</th>
+                <th class="text-center">View</th>
+                <th class="text-center">Edit</th>
+                <th class="text-center">Delete</th>
+              </tr>
+              </thead>
+              <tbody id="suppliersTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <div id="suppliersEmptyState" class="empty-state" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <div class="empty-state-text">No suppliers found</div>
+              <p class="empty-state-description">Add your first supplier to get started</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 💳 TRANSACTIONS PAGE -->
+    <div id="transactionsPage" class="page-content hidden">
+
+      <!-- New Transaction Section -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">New Transaction</h2>
+        </div>
+        <div class="card-content" style="padding: var(--spacing-6);">
+          <form id="transactionForm" class="transaction-form" onsubmit="return false;">
+            <div class="form-row">
+              <!-- Transaction Type -->
+              <div class="form-group">
+                <label>Transaction Type *</label>
+                <div class="segmented-control">
+                  <input type="radio" id="txnTypeSale" name="txnType" value="Sale" checked>
+                  <label for="txnTypeSale" class="segment-label">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Sale
+                  </label>
+
+                  <div id="purchaseOption">
+                    <input type="radio" id="txnTypePurchase" name="txnType" value="Purchase">
+                    <label for="txnTypePurchase" class="segment-label">
+                      <svg class="icon" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                      Purchase
+                    </label>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- Product Selection -->
+              <div class="form-group">
+                <label for="txnProduct">Product *</label>
+                <select id="txnProduct" class="select-input" required onchange="onProductChange()">
+                  <option value="">Select product...</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <!-- Available Stock (visible only for Sale) -->
+              <div class="form-group" id="availableStockGroup">
+                <label>Available Stock</label>
+                <div class="stock-badge-container">
+                  <span id="availableStock" class="badge badge-outline">—</span>
+                </div>
+              </div>
+
+              <!-- Quantity -->
+              <div class="form-group">
+                <label for="txnQuantity">Quantity *</label>
+                <input type="number" id="txnQuantity" min="1" placeholder="0" required oninput="calculateTotal()">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <!-- Unit Price (read-only) -->
+              <div class="form-group">
+                <label>Unit Price</label>
+                <input type="text" id="txnUnitPrice" readonly placeholder="0">
+              </div>
+
+              <!-- Total Price (calculated) -->
+              <div class="form-group">
+                <label>Total Price</label>
+                <input type="text" id="txnTotalPrice" readonly placeholder="0" class="total-price-input">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="txnNotes">Notes (Optional)</label>
+              <textarea id="txnNotes" rows="2" placeholder="Add transaction notes..."></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: var(--spacing-2); margin-top: var(--spacing-4);">
+              <button type="button" class="btn btn-outline" onclick="resetTransactionForm()">Clear</button>
+              <button type="button" class="btn btn-primary" onclick="confirmTransactionFromPage()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Confirm Transaction
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Transaction History Section -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Transaction History</h2>
+          <div class="card-actions">
+
+            <!-- 🔍 Search transactions -->
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+
+              <input
+                      type="text"
+                      id="transactionSearch"
+                      class="search-input"
+                      placeholder="Search transactions..."
+                      oninput="searchTransactions()"
+              />
+            </div>
+
+            <!-- Today / All -->
+            <div class="segmented-control-filter">
+            <input type="radio" id="filterToday" name="txnFilter" value="today" checked onchange="applyTransactionFilter()">
+            <label for="filterToday" class="segment-label">Today</label>
+
+            <input type="radio" id="filterAll" name="txnFilter" value="all" onchange="applyTransactionFilter()">
+            <label for="filterAll" class="segment-label">All</label>
+
+            <input type="radio" id="filterCustom" name="txnFilter" value="custom" onchange="applyTransactionFilter()">
+            <label for="filterCustom" class="segment-label">Custom Range</label>
+          </div>
+
+            <div id="dateRangeInputs" style="display: none; gap: 0.5rem;">
+              <input type="date" id="txnStartDate" class="select-input" style="width: auto;">
+              <span style="color: var(--muted-foreground);">to</span>
+              <input type="date" id="txnEndDate" class="select-input" style="width: auto;">
+              <button class="btn btn-primary" onclick="loadTransactionsByRange()">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                Apply
+              </button>
+            </div>
+
+            <button class="btn btn-outline" onclick="loadTransactions()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+          </div>
+
+        </div>
+
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th class="text-center">Type</th>
+                <th>Product</th>
+                <th class="text-center">Quantity</th>
+                <th class="text-center">Total Price</th>
+                <th>User</th>
+                <th>Notes</th>
+              </tr>
+              </thead>
+              <tbody id="transactionsTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <div id="transactionsEmptyState" class="empty-state" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+              <div class="empty-state-text">No transactions found</div>
+              <p class="empty-state-description">Record your first transaction to get started</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 📊 REPORTS PAGE -->
+    <div id="reportsPage" class="page-content hidden">
+
+      <!-- Page Header -->
+      <div style="margin-bottom: var(--spacing-6);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-4);">
+          <div>
+            <h1 style="margin: 0 0 0.25rem 0;">Reports & Analytics</h1>
+            <p style="color: var(--muted-foreground); margin: 0;">Business insights based on real-time system data</p>
+          </div>
+
+          <!-- Date Range Selector -->
+          <div class="segmented-control-filter" style="min-width: 280px;">
+            <input type="radio" id="dateToday" name="dateRange" value="today" onchange="changeDateRange('today')">
+            <label for="dateToday" class="segment-label">Today</label>
+
+            <input type="radio" id="dateWeek" name="dateRange" value="week" onchange="changeDateRange('week')">
+            <label for="dateWeek" class="segment-label">This Week</label>
+
+            <input type="radio" id="dateMonth" name="dateRange" value="month" checked onchange="changeDateRange('month')">
+            <label for="dateMonth" class="segment-label">This Month</label>
+          </div>
+          <button class="btn btn-outline" onclick="loadReportsData()">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div>
+        <h2 style="margin-bottom: var(--spacing-4);">Sales Overview</h2>
+        <div class="stats-grid" style="margin-bottom: var(--spacing-6);">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Revenue</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div class="stat-value" id="reportTotalRevenue">0</div>
+            <p class="stat-description" id="reportTotalTransactions">0 transactions</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Transactions</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="21" r="1"></circle>
+                <circle cx="20" cy="21" r="1"></circle>
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+              </svg>
+            </div>
+            <div class="stat-value" id="reportTotalTxns">0</div>
+            <p class="stat-description">Sales completed</p>
+          </div>
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Items Sold</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div class="stat-value" id="reportTotalItems">0</div>
+            <p class="stat-description">Units sold</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sales by Category -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">Sales by Category</h2>
+          <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">Revenue and quantity sold per category</p>
+        </div>
+        <div class="card-content">
+          <div id="categorySalesChart" style="min-height: 300px; display: flex; align-items: center; justify-content: center; color: var(--muted-foreground);">
+            Loading chart...
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Selling Products -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">Top Selling Products</h2>
+          <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">Best performing products in selected period</p>
+        </div>
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th class="text-right">Units Sold</th>
+                <th class="text-right">Total Revenue</th>
+              </tr>
+              </thead>
+              <tbody id="topProductsTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory Status -->
+      <div>
+        <h2 style="margin-bottom: var(--spacing-4);">Inventory Status</h2>
+
+        <!-- Inventory Summary Cards -->
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: var(--spacing-6);">
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Products</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div class="stat-value" id="invTotalProducts">0</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Items</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              </svg>
+            </div>
+            <div class="stat-value" id="invTotalItems">0</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-header">
+              <span class="stat-title">Total Value</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div class="stat-value" id="invTotalValue">0</div>
+          </div>
+
+          <div class="stat-card stat-card-warning">
+            <div class="stat-header">
+              <span class="stat-title">Low Stock</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              </svg>
+            </div>
+            <div class="stat-value text-warning" id="invLowStock">0</div>
+          </div>
+
+          <div class="stat-card stat-card-warning">
+            <div class="stat-header">
+              <span class="stat-title">Out of Stock</span>
+              <svg class="icon-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <div class="stat-value text-destructive" id="invOutOfStock">0</div>
+          </div>
+        </div>
+
+        <!-- Stock Level Tables (Tabbed) -->
+        <div class="card" style="margin-bottom: var(--spacing-6);">
+          <div class="card-header">
+            <h2 class="card-title">Stock Levels</h2>
+            <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">Products categorized by stock status</p>
+          </div>
+          <div class="card-content">
+            <!-- Tab Navigation -->
+            <div class="segmented-control-filter" style="margin-bottom: var(--spacing-4);">
+              <input type="radio" id="stockTabOut" name="stockTab" value="out_of_stock" checked onchange="changeStockTab('out_of_stock')">
+              <label for="stockTabOut" class="segment-label">Out of Stock (<span id="outOfStockCount">0</span>)</label>
+
+              <input type="radio" id="stockTabLow" name="stockTab" value="low_stock" onchange="changeStockTab('low_stock')">
+              <label for="stockTabLow" class="segment-label">Low Stock (<span id="lowStockCountTab">0</span>)</label>
+
+              <input type="radio" id="stockTabNormal" name="stockTab" value="normal_stock" onchange="changeStockTab('normal_stock')">
+              <label for="stockTabNormal" class="segment-label">Normal Stock (<span id="normalStockCount">0</span>)</label>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="table-container">
+              <table class="inventory-table">
+                <thead>
+                <tr>
+                  <th>Product Name</th>
+                  <th>Category</th>
+                  <th class="text-right">Quantity</th>
+                  <th class="text-right">Total Value</th>
+                </tr>
+                </thead>
+                <tbody id="stockLevelsTableBody">
+                <!-- Populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transaction Statistics -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">Transaction Statistics</h2>
+          <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">Sales vs Purchases comparison</p>
+        </div>
+        <div class="card-content">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-6);">
+            <!-- Sales Stats -->
+            <div>
+              <h3 style="margin-bottom: var(--spacing-3);">Sales</h3>
+              <div style="display: flex; flex-direction: column; gap: var(--spacing-2);">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Transaction Count:</span>
+                  <span style="font-weight: 500;" id="salesTxnCount">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Total Quantity:</span>
+                  <span style="font-weight: 500;" id="salesTotalQty">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Total Amount:</span>
+                  <span style="font-weight: 500;" id="salesTotalAmount">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Purchase Stats -->
+            <div>
+              <h3 style="margin-bottom: var(--spacing-3);">Purchases</h3>
+              <div style="display: flex; flex-direction: column; gap: var(--spacing-2);">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Transaction Count:</span>
+                  <span style="font-weight: 500;" id="purchaseTxnCount">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Total Quantity:</span>
+                  <span style="font-weight: 500;" id="purchaseTotalQty">0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: var(--muted-foreground);">Total Amount:</span>
+                  <span style="font-weight: 500;" id="purchaseTotalAmount">0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Supplier Performance -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">Supplier Performance</h2>
+          <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">Revenue generated by supplier products</p>
+        </div>
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>Supplier Name</th>
+                <th class="text-center">Product Count</th>
+                <th class="text-center">Items Sold</th>
+                <th class="text-right">Revenue Generated</th>
+              </tr>
+              </thead>
+              <tbody id="supplierPerformanceTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- User Activity Reports (Admin Only) -->
+      <div id="userActivitySection" class="card">
+        <div class="card-header">
+          <h2 class="card-title">User Activity</h2>
+          <p style="color: var(--muted-foreground); font-size: 0.875rem; margin-top: 0.25rem;">System user activity tracking</p>
+        </div>
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>Username</th>
+                <th>Role</th>
+                <th class="text-right">Action Count</th>
+                <th>Last Activity</th>
+              </tr>
+              </thead>
+              <tbody id="userActivityTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 🔧 MONITORING PAGE -->
+    <div id="monitoringPage" class="page-content hidden">
+
+      <!-- Page Header -->
+      <div style="margin-bottom: var(--spacing-6);">
+        <h1 style="margin: 0 0 0.25rem 0;">Monitoring</h1>
+        <p style="color: var(--muted-foreground); margin: 0;">System activity & active users</p>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="monitoring-summary-grid" style="margin-bottom: var(--spacing-6);">
+        <div class="card" style="padding: var(--spacing-4);">
+          <div style="display: flex; align-items: center; gap: var(--spacing-3);">
+            <div class="monitoring-icon-circle" style="background-color: rgba(59, 130, 246, 0.1);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="width: 1.25rem; height: 1.25rem;">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--muted-foreground); margin-bottom: 0.25rem;">Active Users</div>
+              <div id="activeUsersCount" style="font-size: 1.5rem; font-weight: 600;">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding: var(--spacing-4);">
+          <div style="display: flex; align-items: center; gap: var(--spacing-3);">
+            <div class="monitoring-icon-circle" style="background-color: rgba(16, 185, 129, 0.1);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" style="width: 1.25rem; height: 1.25rem;">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--muted-foreground); margin-bottom: 0.25rem;">Actions Today</div>
+              <div id="actionsTodayCount" style="font-size: 1.5rem; font-weight: 600;">0</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Sessions Section -->
+      <div class="card" style="margin-bottom: var(--spacing-6);">
+        <div class="card-header">
+          <h2 class="card-title">Active Sessions</h2>
+          <div class="card-actions">
+            <button class="btn btn-outline" onclick="loadActiveSessions()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>IP Address</th>
+                <th>Connected At</th>
+              </tr>
+              </thead>
+              <tbody id="activeSessionsTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <div id="activeSessionsEmptyState" class="empty-state" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              <div class="empty-state-text">No active users</div>
+              <p class="empty-state-description">No users are currently connected to the system</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit Log Section -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Audit Log</h2>
+          <div class="card-actions">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.35-4.35"></path>
+              </svg>
+              <input
+                      type="text"
+                      id="auditLogSearch"
+                      placeholder="Search user or action..."
+                      class="search-input"
+                      oninput="searchAuditLogs()"
+              >
+            </div>
+            <button class="btn btn-outline" onclick="loadAuditLogs()">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        <div class="card-content">
+          <div class="table-container">
+            <table class="inventory-table">
+              <thead>
+              <tr>
+                <th>Date & Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Details</th>
+              </tr>
+              </thead>
+              <tbody id="auditLogTableBody">
+              <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+            <div id="auditLogEmptyState" class="empty-state" style="display: none;">
+              <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <div class="empty-state-text">No audit logs found</div>
+              <p class="empty-state-description">System activity will appear here</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= ADD/EDIT MODAL ================= -->
+<div id="productModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeProductModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Add New Item</h3>
+      <button class="modal-close" onclick="closeProductModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form class="modal-form" onsubmit="return false;">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pName">Item Name *</label>
+          <input type="text" id="pName" placeholder="Enter item name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pCategory">Category *</label>
+          <input
+                  type="text"
+                  id="pCategory"
+                  list="categoryList"
+                  placeholder="Select or type category"
+                  required
+          >
+
+          <datalist id="categoryList">
+          </datalist>
+
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pPrice">Unit Price *</label>
+          <input type="number" id="pPrice" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+
+        <div class="form-group">
+          <label for="pQty">Quantity *</label>
+          <input type="number" id="pQty" min="0" placeholder="0" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pSupplier">Supplier</label>
+          <select id="pSupplier" class="select-input">
+            <option value="">No supplier</option>
+          </select>
+        </div>
+      </div>
+
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeProductModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="addBtn" onclick="addProduct()">Add Item</button>
+        <button type="button" class="btn btn-primary" id="updateBtn" onclick="testUpdate()">Update</button>
+        <button type="button" class="btn btn-destructive" id="deleteBtn" onclick="testDelete()">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="renderer.js"></script>
+<!-- ================= TRANSACTION MODAL ================= -->
+<div id="txnModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeTxnModal()"></div>
+
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="txnTitle">Transaction</h3>
+      <button class="modal-close" onclick="closeTxnModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form class="modal-form" onsubmit="return false;">
+      <div class="form-group" style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--foreground);" id="txnInfoLabel">Product Information</label>
+        <p id="txnInfo" style="color: var(--muted-foreground); font-size: 14px; line-height: 1.5;"></p>
+      </div>
+
+      <div class="form-group">
+        <label for="txnQty">Quantity *</label>
+        <input
+                type="number"
+                id="txnQty"
+                min="1"
+                value="1"
+                placeholder="Enter quantity"
+                required
+        />
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeTxnModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="confirmTransaction()">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= SUPPLIER MODAL ================= -->
+<div id="supplierModal" class="modal hidden">
+  <div class="modal-overlay" onclick="closeSupplierModal()"></div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="supplierModalTitle">Add New Supplier</h3>
+      <button class="modal-close" onclick="closeSupplierModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <form class="modal-form" onsubmit="return false;">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="sName">Supplier Name *</label>
+          <input type="text" id="sName" placeholder="Enter supplier name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="sContact">Contact Info *</label>
+          <input type="text" id="sContact" placeholder="+998 XX XXX XXXX" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="sEmail">Email</label>
+          <input type="email" id="sEmail" placeholder="supplier@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="sAddress">Address</label>
+          <input type="text" id="sAddress" placeholder="Enter address">
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" onclick="closeSupplierModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="addSupplierBtn" onclick="addSupplier()">Add Supplier</button>
+        <button type="button" class="btn btn-primary" id="updateSupplierBtn" onclick="updateSupplier()">Update</button>
+        <button type="button" class="btn btn-destructive" id="deleteSupplierBtn" onclick="deleteSupplier()">Delete</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>
